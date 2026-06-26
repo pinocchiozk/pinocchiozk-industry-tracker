@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "activeProjectId": "p-ai",
+  "activeProjectId": "p-jri4blq5pel",
   "timelineDates": [
     "2025-04-21"
   ],
@@ -125,6 +125,15 @@
           "description": ""
         }
       ]
+    },
+    {
+      "id": "p-jri4blq5pel",
+      "createdAt": "2026-06-26",
+      "sectors": [],
+      "name": "生物科技",
+      "emoji": "·",
+      "color": "#58a6ff",
+      "description": ""
     }
   ]
 }
