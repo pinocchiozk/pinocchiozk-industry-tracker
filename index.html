@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>产业跟踪 · 交易决策工作台</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- 顶部导航 -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">产业跟踪工作台</span>
+        <span class="brand-sub">Industry · Trade Tracker</span>
+      </div>
+
+      <nav class="header-nav" id="headerNav">
+        <button class="nav-btn" data-route="home" title="回到主页">🏠 主页</button>
+        <span class="breadcrumb" id="breadcrumb"></span>
+      </nav>
+
+      <div class="header-actions">
+        <span id="syncStatus" class="sync-status-wrap"></span>
+        <button id="syncPullBtn" class="btn btn-ghost" data-act="sync-pull" title="从 GitHub 拉取最新数据">☁ 拉取</button>
+        <button id="syncPushBtn" class="btn btn-ghost" data-act="sync-push" title="推送本地数据到 GitHub">☁ 推送</button>
+        <button id="syncSettingsBtn" class="btn btn-ghost" data-act="open-sync-settings" title="GitHub 同步设置">⚙ 同步</button>
+        <select id="projectSelector" class="select" title="切换项目"></select>
+        <button id="newProjectBtn" class="btn btn-primary" title="新建项目">+ 新项目</button>
+        <button id="exportBtn" class="btn btn-ghost" title="导出 JSON">导出</button>
+        <label for="importInput" class="btn btn-ghost" title="导入 JSON">导入</label>
+        <input type="file" id="importInput" accept="application/json" hidden />
+        <button id="resetBtn" class="btn btn-ghost btn-danger-ghost" title="重置为示例数据">重置</button>
+      </div>
+    </header>
+
+    <!-- 主视图 -->
+    <main id="viewRoot" class="view-root"></main>
+
+    <!-- 底部时间轴 -->
+    <footer class="timeline-footer" id="timelineFooter">
+      <div class="timeline-bar">
+        <div class="timeline-bar-left">
+          <button id="addTimelineBtn" class="btn-mini">＋ 时间节点</button>
+          <button id="editTimelineBtn" class="btn-mini">✎ 编辑当前节点</button><button id="deleteTimelineBtn" class="btn-mini btn-mini-danger">删除当前节点</button>
+        </div>
+        <div class="timeline-bar-mid">
+          <span class="timeline-label">⏱ 时间轴 · 切换下方节点可联动所有视图</span>
+        </div>
+        <div class="timeline-bar-right">
+          <span class="active-date-label">当前节点：<b id="activeDateLabel">—</b></span>
+        </div>
+      </div>
+      <div id="timelineTrack" class="timeline-track"></div>
+    </footer>
+
+    <!-- 抽屉 / 模态 -->
+    <div id="drawerRoot"></div>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
