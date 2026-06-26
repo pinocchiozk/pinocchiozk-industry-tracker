@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "activeProjectId": "p-ai",
+  "timelineDates": [
+    "2025-04-21"
+  ],
+  "timelineMeta": {
+    "2026-01-15": {
+      "label": "台积电 3nm 满载",
+      "note": "2026 资本开支上调至 44B USD，3nm 产能利用率 100%。"
+    },
+    "2026-02-15": {
+      "label": "英伟达 GTC",
+      "note": "B300 发布，性能 +50%，功耗 +30%，8 月开始出货。"
+    },
+    "2026-03-10": {
+      "label": "SK 海力士 HBM4 良率",
+      "note": "良率突破 70%，ASP 小幅上涨。"
+    },
+    "2026-04-05": {
+      "label": "国产替代加码",
+      "note": "寒武纪、海光订单超预期，国内大客户切换加速。"
+    },
+    "2026-05-20": {
+      "label": "GPT-6 发布 + 台积电 Q1",
+      "note": "GPT-6 多模态大幅提升，推理成本 -70%。台积电 Q1 +35%。"
+    },
+    "2026-06-25": {
+      "label": "CFS 聚变 Q>2 + Groq LPU",
+      "note": "CFS 净能量增益 >2，商用化提前到 2030；Groq LPU 冲击推理市场。"
+    }
+  },
+  "activeDate": "2025-05-26",
+  "projects": [
+    {
+      "id": "p-ai",
+      "name": "AI 算力革命",
+      "emoji": "🧠",
+      "color": "#58a6ff",
+      "description": "跟踪全球 AI 算力 / 软件应用 / 电力能源全产业链关键节点与个股投资机会。",
+      "createdAt": "2026-01-15",
+      "sectors": [
+        {
+          "id": "s-6eb1iqjgt0c",
+          "chainNodes": [],
+          "subdivisions": [
+            {
+              "id": "sd-19pfuo7h52z",
+              "trackingEntries": [
+                {
+                  "id": "te-f2pl5rvlhf5",
+                  "date": "2025-05-26",
+                  "content": "1.纳指生物科技成分股公司多数已经进入低估区间，在本轮美股科技股大幅调整前已经开始调整(当初调整主要是因为美联储降息预期延后，还有中美CXO领域合作受阻)；\n2.美联储降息预期4月以来持续回升，市场预计最快6月降息，慢的话9月，比之前认为的四季度降息都提前了，因为关税战趋于缓和以及近端通胀数据可控。降息利好生物科技大公司的投融资收并购和研发资金筹措；\n3.中美CXO领域合作受阻后，中国非CXO类创新药企与美国大药企开始海外授权合作(中国药企把自己研发的创新药在海外的市场使用权”卖”给国外的跨国药企。国内药企会拿到一笔首付款，后续还可能根据药品的市场表现拿到一些分成款项。一季度，就已经出现了超20笔涉及中国药企全球授权的交易，这其中就包括罗氏豪掷超10亿美元淘金信达生物，以及乐普生物就一款临床前ADC与ArriVent达成一笔超12亿美元的重磅合作)该合作当前阶段利好中美大药企(当然这个合作后面过程中一定会出现波折，所以后续港股创新药和纳指生物科技出现10-20%回撤也正常，近期当港股创新药逼近前高时告诉大家可以卖一部分)；\n4.AI医药医疗的发展长线上利好全球大药企。"
+                }
+              ],
+              "stocks": [
+                {
+                  "id": "st-u5yh2kyj312",
+                  "snapshots": [],
+                  "operations": [],
+                  "name": "纳指生物科技ETF",
+                  "ticker": "513290",
+                  "market": "美股",
+                  "concept": ""
+                }
+              ],
+              "name": "纳指生物科技",
+              "icon": "🧬",
+              "color": "#58a6ff",
+              "chainNodeId": null
+            },
+            {
+              "id": "sd-n3bb203hgwc",
+              "trackingEntries": [],
+              "stocks": [
+                {
+                  "id": "st-xo7juepkb0w",
+                  "snapshots": [],
+                  "operations": [],
+                  "name": "港股创新药ETF广发",
+                  "ticker": "513120",
+                  "market": "港股",
+                  "concept": ""
+                }
+              ],
+              "name": "港股创新药",
+              "icon": "🧬",
+              "color": "#58a6ff",
+              "chainNodeId": null
+            }
+          ],
+          "trackingEntries": [],
+          "name": "生物医药",
+          "icon": "🧪",
+          "color": "#5aff57",
+          "description": ""
+        },
+        {
+          "id": "s-713u453nebl",
+          "chainNodes": [],
+          "subdivisions": [
+            {
+              "id": "sd-7da21wgoyct",
+              "trackingEntries": [],
+              "stocks": [],
+              "name": "PEEK材料",
+              "icon": "🤖",
+              "color": "#58a6ff",
+              "chainNodeId": null
+            },
+            {
+              "id": "sd-yle9tkwpenk",
+              "trackingEntries": [],
+              "stocks": [],
+              "name": "仿生臂",
+              "icon": "🤖",
+              "color": "#58a6ff",
+              "chainNodeId": null
+            }
+          ],
+          "trackingEntries": [],
+          "name": "人形机器人",
+          "icon": "🤖",
+          "color": "#58a6ff",
+          "description": ""
+        }
+      ]
+    }
+  ]
+}
