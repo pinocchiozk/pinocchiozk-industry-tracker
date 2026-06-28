@@ -1902,17 +1902,17 @@ html, body {
   font-weight: normal;
 }
 
-.op-drawers-grid {
+.opinions-drawers-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 14px;
   align-items: start;
 }
-@media (max-width: 1200px) { .op-drawers-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 700px)  { .op-drawers-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) { .opinions-drawers-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px)  { .opinions-drawers-grid { grid-template-columns: 1fr; } }
 
-.op-drawer {
+.opinion-col {
   position: relative;
   background: var(--bg-elev-2);
   border: 2px solid var(--border);
@@ -1927,12 +1927,12 @@ html, body {
   box-shadow: 0 0 0 2px rgba(88,166,255,0.30), 0 4px 12px rgba(0,0,0,0.25);
 }
 
-.op-drawer-head {
+.opinion-col-head {
   padding: 12px 14px 8px;
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg-elev-3);
 }
-.op-drawer-head .op-drawer-date {
+.opinion-col-head .op-drawer-date {
   font-family: var(--mono);
   font-size: 18px;
   font-weight: 700;
@@ -1940,7 +1940,7 @@ html, body {
   letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
-.op-drawer-head .op-drawer-label {
+.opinion-col-head .op-drawer-label {
   width: 100%;
   background: transparent;
   border: 1px solid transparent;
@@ -1952,10 +1952,10 @@ html, body {
   font-family: inherit;
   outline: none;
 }
-.op-drawer-head .op-drawer-label:hover { border-color: var(--border-soft); }
-.op-drawer-head .op-drawer-label:focus { border-color: var(--accent); background: var(--bg-elev-1); }
+.opinion-col-head .op-drawer-label:hover { border-color: var(--border-soft); }
+.opinion-col-head .op-drawer-label:focus { border-color: var(--accent); background: var(--bg-elev-1); }
 
-.op-drawer-body {
+.opinion-col-body {
   padding: 12px 14px;
   flex: 1;
   display: flex; flex-direction: column; gap: 10px;
@@ -2036,7 +2036,7 @@ html, body {
 }
 .op-drawer-nav button:hover { background: var(--bg-elev-3); color: var(--accent); border-color: var(--accent); }
 .op-drawer-nav button:disabled { opacity: .3; cursor: not-allowed; }
-.op-drawer-del {
+.opinion-col-del {
   position: absolute;
   right: 6px; top: 60px;
   width: 22px; height: 22px;
@@ -2051,11 +2051,11 @@ html, body {
   transition: opacity .15s;
   z-index: 5;
 }
-.op-drawer:hover .op-drawer-del { opacity: 1; }
-.op-drawer-del:hover { background: #ff6b6b; color: #fff; border-color: #ff6b6b; }
+.op-drawer:hover .opinion-col-del { opacity: 1; }
+.opinion-col-del:hover { background: #ff6b6b; color: #fff; border-color: #ff6b6b; }
 
 /* 时间轴 */
-.op-rail-wrap {
+.opinions-rail-wrap {
   position: relative;
   padding: 8px 50px;
   background: var(--bg-elev-2);
@@ -2063,7 +2063,7 @@ html, body {
   border-radius: 10px;
   margin-top: 4px;
 }
-.op-rail-track {
+.opinions-rail-track {
   position: relative;
   height: 60px;
   display: flex;
@@ -2071,7 +2071,7 @@ html, body {
   overflow-x: auto;
   overflow-y: hidden;
 }
-.op-rail-axis {
+.opinions-rail-axis {
   position: absolute;
   left: 0; right: 0;
   top: 50%;
@@ -2079,7 +2079,7 @@ html, body {
   background: var(--border);
   z-index: 0;
 }
-.op-rail-progress {
+.opinions-rail-axis-progress {
   position: absolute;
   left: 0;
   top: 50%;
@@ -2088,7 +2088,7 @@ html, body {
   z-index: 1;
   transition: width .2s;
 }
-.op-rail-node {
+.opinions-rail-node {
   position: relative;
   z-index: 2;
   padding: 0 6px;
@@ -2098,28 +2098,28 @@ html, body {
   min-width: 0;
   user-select: none;
 }
-.op-rail-node .op-rail-dot {
+.opinions-rail-node .opinions-rail-dot {
   width: 12px; height: 12px;
   border-radius: 50%;
   background: var(--bg-elev-2);
   border: 2px solid var(--border);
   transition: border-color .15s, transform .15s, background .15s;
 }
-.op-rail-node:hover .op-rail-dot { border-color: var(--accent); transform: scale(1.2); }
-.op-rail-node.is-active .op-rail-dot {
+.opinions-rail-node:hover .opinions-rail-dot { border-color: var(--accent); transform: scale(1.2); }
+.opinions-rail-node.is-active .opinions-rail-dot {
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 0 6px rgba(88,166,255,0.45);
 }
-.op-rail-node .op-rail-label {
+.opinions-rail-node .opinions-rail-label {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text-2);
   white-space: nowrap;
 }
-.op-rail-node.is-active .op-rail-label { color: var(--accent); font-weight: 600; }
+.opinions-rail-node.is-active .opinions-rail-label { color: var(--accent); font-weight: 600; }
 
-.op-rail-nav {
+.opinions-rail-nav {
   position: absolute;
   top: 50%; transform: translateY(-50%);
   width: 30px; height: 30px;
@@ -2132,12 +2132,12 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   z-index: 5;
 }
-.op-rail-nav:hover { border-color: var(--accent); color: var(--accent); }
-.op-rail-nav:disabled { opacity: .3; cursor: not-allowed; }
-.op-rail-nav.prev { left: 8px; }
-.op-rail-nav.next { right: 46px; }
+.opinions-rail-nav:hover { border-color: var(--accent); color: var(--accent); }
+.opinions-rail-nav:disabled { opacity: .3; cursor: not-allowed; }
+.opinions-rail-nav.prev { left: 8px; }
+.opinions-rail-nav.next { right: 46px; }
 
-.op-rail-add {
+.opinions-rail-add {
   position: absolute;
   top: 50%; right: 8px;
   transform: translateY(-50%);
@@ -2152,8 +2152,8 @@ html, body {
   z-index: 100;
   pointer-events: auto;
 }
-.op-rail-add:hover { transform: translateY(-50%) scale(1.05); box-shadow: 0 0 6px rgba(88,166,255,0.45); }
-.op-rail-add:active { transform: translateY(-50%) scale(0.95); }
+.opinions-rail-add:hover { transform: translateY(-50%) scale(1.05); box-shadow: 0 0 6px rgba(88,166,255,0.45); }
+.opinions-rail-add:active { transform: translateY(-50%) scale(0.95); }
 
 /* 历史快照紧凑 */
 .hist-snaps { display: flex; gap: 6px; flex-wrap: wrap; }

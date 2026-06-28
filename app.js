@@ -1073,16 +1073,16 @@ App.projectOverallStats = function (p) {
               <span>· 操作建议 · 时间轴</span>
               <span class="hint">4 列抽屉 + 底部节点对齐</span>
             </h3>
-            <div class="op-drawers-grid" data-stock-op-drawers="${stockKey}">
+            <div class="opinions-drawers-grid" data-stock-op-drawers="${stockKey}">
               ${ops.length ? ops.slice(0, 4).map((o, idx) => {
                 const m = ST.opTypeMeta(o.type);
                 return `
-                  <div class="op-drawer${idx === 0 ? " is-active" : ""}" data-op-id="${o.id}" data-stock-op-id="${st.id}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}">
-                    <div class="op-drawer-head">
-                      <div class="op-drawer-date">${ST.fmtDate(o.date)}</div>
-                      <input class="op-drawer-label" data-field="op-label" data-op-id="${o.id}" value="${ST.escapeHtml(o.label || m.label)}" placeholder="评估标签…" />
+                  <div class="opinion-col${idx === 0 ? " is-active" : ""}" data-op-id="${o.id}" data-stock-op-id="${st.id}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}">
+                    <div class="opinion-col-head">
+                      <div class="opinion-col-date">${ST.fmtDate(o.date)}</div>
+                      <input class="opinion-col-label-input" data-field="op-label" data-op-id="${o.id}" value="${ST.escapeHtml(o.label || m.label)}" placeholder="评估标签…" />
                     </div>
-                    <div class="op-drawer-body">
+                    <div class="opinion-col-body">
                       <div class="op-block">
                         <div class="op-block-title"><span class="op-block-icon">📋</span> 操作建议</div>
                         <div class="op-fields-row">
@@ -1115,23 +1115,23 @@ App.projectOverallStats = function (p) {
                         <textarea class="op-textarea" data-field="op-signals" data-op-id="${o.id}" placeholder="什么信号需要重新评估…">${ST.escapeHtml(o.signals || "")}</textarea>
                       </div>
                     </div>
-                    <div class="op-drawer-nav">
+                    <div class="opinion-col-nav">
                       <button data-act="op-move-up" data-op-id="${o.id}" ${idx === 0 ? "disabled" : ""}>▲</button>
                       <button data-act="op-move-down" data-op-id="${o.id}" ${idx === ops.length - 1 ? "disabled" : ""}>▼</button>
                     </div>
-                    <button class="op-drawer-del" data-act="del-op-drawer" data-op-id="${o.id}" title="删除节点">✕</button>
+                    <button class="opinion-col-del" data-act="del-opinion-col" data-op-id="${o.id}" title="删除节点">✕</button>
                   </div>
                 `;
               }).join("") : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">暂无操作建议，点击下方 ＋ 添加</div>`}
             </div>
-            <div class="op-rail-wrap" data-stock-op-rail="${stockKey}">
-              <button class="op-rail-nav prev" data-act="op-rail-prev" title="上一页节点">‹</button>
-              <div class="op-rail-track" data-op-rail-track>
-                <div class="op-rail-axis"></div>
-                <div class="op-rail-progress" data-op-rail-progress></div>
+            <div class="opinions-rail-wrap" data-stock-op-rail="${stockKey}">
+              <button class="opinions-rail-nav prev" data-act="op-rail-prev" title="上一页节点">‹</button>
+              <div class="opinions-rail-track" data-opinions-rail-track>
+                <div class="opinions-rail-axis"></div>
+                <div class="opinions-rail-axis-progress" data-opinions-rail-axis-progress></div>
               </div>
-              <button class="op-rail-nav next" data-act="op-rail-next" title="下一页节点">›</button>
-              <button class="op-rail-add" data-act="add-op-drawer" title="添加评估节点（手动选日期）">＋</button>
+              <button class="opinions-rail-nav next" data-act="op-rail-next" title="下一页节点">›</button>
+              <button class="opinions-rail-add" data-act="add-opinion-col" title="添加评估节点（手动选日期）">＋</button>
             </div>
           </div>
         </div>
@@ -2326,9 +2326,9 @@ App.projectOverallStats = function (p) {
       case "op-move-up":
       case "op-move-down":
         this.handleOpDrawerMove(act, el); return;
-      case "del-op-drawer":
+      case "del-opinion-col":
         this.handleOpDrawerDel(act, el); return;
-      case "add-op-drawer": {
+      case "add-opinion-col": {
         const today = new Date().toISOString().slice(0, 10);
         const inputDate = prompt("请输入评估日期（YYYY-MM-DD）：", today);
         if (inputDate === null) return;
@@ -2365,7 +2365,7 @@ App.projectOverallStats = function (p) {
         if (!state) { state = { pageStart: 0, activeIdx: 0 }; App.opDrawerState[key] = state; }
         const drawer = document.querySelector('[data-' + type + '-op-drawers]');
         if (!drawer) return;
-        const total = drawer.querySelectorAll(".op-drawer").length;
+        const total = drawer.querySelectorAll(".opinion-col").length;
         const isPrev = act === "op-rail-prev" || act === "sub-rail-prev" || act === "sd-rail-prev";
         if (isPrev) {
           state.pageStart = Math.max(0, state.pageStart - 4);
@@ -2584,37 +2584,38 @@ App.projectOverallStats = function (p) {
     const drawerSel = '[data-' + type + '-op-drawers]';
     const rail = document.querySelector(railSel);
     if (!rail) return;
-    const track = rail.classList.contains("track-rail-track") ? rail : rail.querySelector(".track-rail-track");
+    const track = rail.classList.contains("track-rail-track") || rail.classList.contains("opinions-rail-track")
+      ? rail : rail.querySelector(".track-rail-track, .opinions-rail-track");
     if (!track) return;
     // 清空已有节点（保留 axis + progress）
     Array.from(track.children).forEach(function (c) {
       const cls = c.className || "";
-      if (cls.indexOf("track-rail-axis") === -1 && cls.indexOf("op-rail-node") === -1) track.removeChild(c);
+      if (cls.indexOf("track-rail-axis") === -1 && cls.indexOf("opinions-rail-node") === -1) track.removeChild(c);
     });
-    Array.from(track.querySelectorAll(".op-rail-node")).forEach(function (n) { n.parentNode.removeChild(n); });
+    Array.from(track.querySelectorAll(".opinions-rail-node")).forEach(function (n) { n.parentNode.removeChild(n); });
     const drawer = document.querySelector(drawerSel);
     if (!drawer) return;
-    const cards = drawer.querySelectorAll(".op-drawer");
+    const cards = drawer.querySelectorAll(".opinion-col");
     const total = cards.length;
     const start = state.pageStart;
     const end = Math.min(start + 4, total);
     for (let i = start; i < end; i++) {
       const c = cards[i];
       const localIdx = i - start;
-      const dateEl = c.querySelector(".op-drawer-date");
+      const dateEl = c.querySelector(".opinion-col-date");
       const dateLabel = dateEl ? dateEl.textContent : "";
       const node = document.createElement("div");
-      node.className = "op-rail-node" + (i === state.activeIdx ? " is-active" : "");
+      node.className = "opinions-rail-node" + (i === state.activeIdx ? " is-active" : "");
       node.dataset.idx = i;
       // 板块/细分的 label 不需要 .slice(5)，stock 的日期格式 "YYYY-MM-DD" 才要切掉年份
       const label = type === "stock" ? dateLabel.slice(5) : dateLabel.slice(0, 12);
-      node.innerHTML = '<div class="op-rail-dot"></div><div class="op-rail-label">' + ST.escapeHtml(label) + "</div>";
+      node.innerHTML = '<div class="opinions-rail-dot"></div><div class="opinions-rail-label">' + ST.escapeHtml(label) + "</div>";
       (function (idx, currentType, currentId) {
         node.addEventListener("click", function () {
           state.activeIdx = idx;
           const page = Math.floor(idx / 4) * 4;
           state.pageStart = page;
-          drawer.querySelectorAll(".op-drawer").forEach(function (dc, di) {
+          drawer.querySelectorAll(".opinion-col").forEach(function (dc, di) {
             dc.classList.toggle("is-active", di === idx);
           });
           App.renderOpRail(currentId, currentType);
@@ -2622,7 +2623,7 @@ App.projectOverallStats = function (p) {
       })(i, type, id);
       track.appendChild(node);
     }
-    const progress = rail.querySelector(".track-rail-axis-progress") || rail.querySelector("[data-op-rail-progress]");
+    const progress = rail.querySelector(".track-rail-axis-progress") || rail.querySelector(".opinions-rail-axis-progress");
     const pageCount = end - start;
     if (progress) {
       if (pageCount > 1) {
@@ -2634,7 +2635,7 @@ App.projectOverallStats = function (p) {
       }
     }
     // 更新 wrap 内所有 prev/next 按钮的 disabled
-    const wrap = rail.closest(".track-rail-wrap, .op-rail-wrap");
+    const wrap = rail.closest(".track-rail-wrap, .opinions-rail-wrap");
     if (wrap) {
       wrap.querySelectorAll('[data-act$="-rail-prev"]').forEach(function (b) { b.disabled = state.pageStart === 0; });
       wrap.querySelectorAll('[data-act$="-rail-next"]').forEach(function (b) { b.disabled = state.pageStart + 4 >= total; });
@@ -2649,7 +2650,7 @@ App.projectOverallStats = function (p) {
     if (!field) return;
     const opId = el.dataset.opId;
     if (!opId) return;
-    const card = el.closest(".op-drawer");
+    const card = el.closest(".opinion-col");
     if (!card) return;
     const sectorId = card.dataset.sectorOpId;
     const subdivisionId = card.dataset.subdivisionOpId;
@@ -2675,7 +2676,7 @@ App.projectOverallStats = function (p) {
   };
 
   App.handleOpDrawerMove = function (act, btn) {
-    const card = btn.closest(".op-drawer");
+    const card = btn.closest(".opinion-col");
     if (!card) return;
     const opId = card.dataset.opId;
     const stockId = card.dataset.stockOpId;
@@ -2699,7 +2700,7 @@ App.projectOverallStats = function (p) {
   };
 
   App.handleOpDrawerDel = function (act, btn) {
-    const card = btn.closest(".op-drawer");
+    const card = btn.closest(".opinion-col");
     if (!card) return;
     const opId = card.dataset.opId;
     const stockId = card.dataset.stockOpId;
