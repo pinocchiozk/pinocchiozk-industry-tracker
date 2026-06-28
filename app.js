@@ -286,7 +286,8 @@
       this.mountChainCanvas(v.sectorId);
     }
     if (v.name === "subdivision") {
-      this.mountPuzzleZoom(v.sectorId, v.subdivisionId);
+      // subdivision 也用同一个画布（focus 当前节点）
+      this.mountChainCanvas(v.sectorId);
     }
   };
 
@@ -759,8 +760,9 @@ App.projectOverallStats = function (p) {
   };
 
   App.mountChainCanvas = function (sectorId) {
-    const wrap = document.getElementById("chainCanvasWrap");
-    if (!wrap) return;
+    const canvas = document.getElementById("chainCanvasInner");
+    const svg = document.getElementById("chainCanvasSvg");
+    if (!canvas || !svg) return;
     const p = this.activeProject();
     const sec = ST.findSector(p, sectorId);
     if (!sec) return;
@@ -768,40 +770,75 @@ App.projectOverallStats = function (p) {
     const nodeMap = {};
     sec.subdivisions.forEach(sd => { if (sd.chainNodeId) nodeMap[sd.chainNodeId] = sd; });
 
-    const W = wrap.clientWidth || 800;
-    const H = wrap.clientHeight || 280;
+    // 清空 canvas
+    canvas.innerHTML = "";
+    canvas.appendChild(svg);
+    svg.innerHTML = "";
+
+    const W = canvas.clientWidth || 800;
+    const H = canvas.clientHeight || 280;
     const nodes = sec.chainNodes.map(n => ({
       ...n,
       x: (n.x / 100) * W,
       y: (n.y / 100) * H,
       hasSubdiv: !!nodeMap[n.id],
+      subdivName: nodeMap[n.id] ? nodeMap[n.id].name : null,
     }));
 
-    let svg = `<svg class="chain-canvas" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <defs>
-        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#3d4a5c" />
-        </marker>
-      </defs>`;
-    for (let i = 0; i < nodes.length - 1; i++) {
-      const a = nodes[i], b = nodes[i + 1];
-      svg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#3d4a5c" stroke-width="1.5" stroke-dasharray="${a.hasSubdiv && b.hasSubdiv ? "0" : "4 4"}" marker-end="url(#arr)" />`;
+    // 画边（按 prototype 的 edges）
+    let svgContent = "";
+    if (nodes.length >= 2) {
+      svgContent += `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#3d4a5c" /></marker></defs>`;
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const a = nodes[i], b = nodes[i + 1];
+        svgContent += `<line class="canvas-edge${a.hasSubdiv && b.hasSubdiv ? "" : " dashed"}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#3d4a5c" stroke-width="1.5" marker-end="url(#arr)" />`;
+      }
     }
-    svg += `</svg>`;
+    svg.innerHTML = svgContent;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.style.width = W + "px";
+    svg.style.height = H + "px";
 
-    const html = nodes.map(n => `
-      <div class="chain-node-html ${n.hasSubdiv ? "has-subdiv" : ""}"
-           style="left:${n.x}px;top:${n.y}px;color:${n.color};"
-           data-act="${n.hasSubdiv ? "open-subdivision-from-node" : "create-subdivision-at-node"}"
-           data-sector-id="${sec.id}"
-           data-chain-node-id="${n.id}"
-           title="${n.hasSubdiv ? "点击进入 " + nodeMap[n.id].name : "点击在此节点创建细分领域"}">
-        <div class="dot" style="border-color:${n.color};color:${n.color};">${n.icon || "·"}</div>
-        <div class="lbl" style="${n.hasSubdiv ? "color:" + n.color : ""}">${ST.escapeHtml(n.label)}${n.hasSubdiv ? " · " + ST.escapeHtml(nodeMap[n.id].name) : ""}</div>
-      </div>
-    `).join("");
-
-    wrap.innerHTML = svg + html;
+    // 画节点（按 prototype 的 canvas-node）
+    nodes.forEach(n => {
+      const el = document.createElement("div");
+      el.className = "canvas-node" + (n.hasSubdiv ? " has-subdiv" : "");
+      el.dataset.nid = n.id;
+      el.dataset.sectorId = sec.id;
+      el.style.left = n.x + "px";
+      el.style.top = n.y + "px";
+      el.style.borderColor = n.color;
+      el.style.color = n.color;
+      el.innerHTML =
+        '<div class="icon">' + ST.escapeHtml(n.icon || "·") + '</div>' +
+        '<div class="label">' + ST.escapeHtml(n.label) + (n.hasSubdiv ? ' · ' + ST.escapeHtml(n.subdivName) : '') + '</div>' +
+        '<div class="port top" data-port="top"></div>' +
+        '<div class="port right" data-port="right"></div>' +
+        '<div class="port bottom" data-port="bottom"></div>' +
+        '<div class="port left" data-port="left"></div>' +
+        '<button class="node-menu-btn" title="操作" data-act="open-node-menu" data-chain-node-id="' + n.id + '">⋯</button>' +
+        '<div class="node-menu" data-node-menu-id="' + n.id + '" hidden>' +
+          '<button data-nact="edit" data-act="edit-chain-node" data-chain-node-id="' + n.id + '">✎ 编辑</button>' +
+          (n.hasSubdiv ? '<button data-nact="open-sub" data-act="open-subdivision-from-node" data-sector-id="' + sec.id + '" data-chain-node-id="' + n.id + '">› 进入细分</button>' : '<button data-nact="add-sub" data-act="create-subdivision-at-node" data-sector-id="' + sec.id + '" data-chain-node-id="' + n.id + '">＋ 创建细分</button>') +
+          '<button class="danger" data-nact="del" data-act="del-chain-node" data-sector-id="' + sec.id + '" data-chain-node-id="' + n.id + '">🗑 删除</button>' +
+        '</div>';
+      // 双击编辑 / 单击选中
+      el.addEventListener("dblclick", function (e) {
+        if (e.target.closest(".node-menu-btn") || e.target.closest(".node-menu")) return;
+        e.stopPropagation();
+        if (n.hasSubdiv) {
+          App.navigateToSubdivision(sec.id, n.id);
+        } else {
+          App.createSubdivisionAtNode(sec.id, n.id);
+        }
+      });
+      el.addEventListener("click", function (e) {
+        if (e.target.classList.contains("port")) return;
+        e.stopPropagation();
+        if (App.chainSelect) App.chainSelect(n.id);
+      });
+      canvas.appendChild(el);
+    });
   };
 
   // ============================================================
@@ -901,19 +938,27 @@ App.projectOverallStats = function (p) {
           </div>
         </header>
         <div class="detail-body">
-          <!-- 缩放拼图（zoom puzzle） -->
-          <section class="panel">
+          <!-- 画布（产业链节点，按 prototype） -->
+          <section class="panel canvas-panel">
             <div class="panel-head">
-              <h3>🧩 局部拼图 · 产业链定位</h3>
-              <span class="hint">聚焦此节点在产业链中的位置</span>
+              <h3>🔗 产业链画布</h3>
+              <span class="hint">拖拽节点 · 双击编辑 · 从节点边缘 4 个连接点拖到另一节点连线 · Delete 删除选中</span>
             </div>
-            <div class="puzzle-zoom-wrap">
-              ${prev ? `<div class="puzzle-neighbors left">‹ ${ST.escapeHtml(prev.label)}</div>` : ""}
-              ${next ? `<div class="puzzle-neighbors right">${ST.escapeHtml(next.label)} ›</div>` : ""}
-              <div class="puzzle-zoom" style="color:${cur ? cur.color : "#58a6ff"};">
-                <div class="icon">${cur ? cur.icon : sd.icon || "·"}</div>
-                <div class="label">${ST.escapeHtml(sd.name)}</div>
-                <div class="sub">${cur ? ST.escapeHtml(cur.label) : ""}</div>
+            <div class="canvas-toolbar">
+              <button class="tool-btn primary" data-act="add-chain-node" data-sector-id="${sec.id}">＋ 添加节点</button>
+              <button class="tool-btn" data-act="load-chain-examples" data-sector-id="${sec.id}">📋 加载示例</button>
+              <span class="grow"></span>
+              <span class="toolbar-label" id="selectionInfo">未选中</span>
+              <button class="tool-btn" data-act="chain-zoom-out" title="缩小">－</button>
+              <span class="toolbar-label" id="zoomLabel" style="min-width:48px;text-align:center;">100%</span>
+              <button class="tool-btn" data-act="chain-zoom-in" title="放大">＋</button>
+              <button class="tool-btn" data-act="chain-zoom-reset" title="还原">⊙</button>
+              <button class="tool-btn danger" data-act="chain-delete-sel" disabled>🗑 删除选中</button>
+              <button class="tool-btn danger" data-act="clear-sector-chain" data-sector-id="${sec.id}">清空</button>
+            </div>
+            <div class="chain-canvas" id="chainCanvas">
+              <div class="chain-canvas-inner" id="chainCanvasInner">
+                <svg class="chain-canvas-svg" id="chainCanvasSvg"></svg>
               </div>
             </div>
           </section>
