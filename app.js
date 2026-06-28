@@ -291,113 +291,107 @@
   };
 
   // ============================================================
-  // 视图 · 主页
+  // 视图 · 主页（V11 · 按 prototype-v18 整体重做 · 4 列抽屉 + 板块/细分/个股 chip 层级）
   // ============================================================
   App.viewHome = function () {
     const p = this.activeProject();
     if (!p) {
       return `<div class="empty-state">
-        <div class="emoji">-</div>
+        <div class="emoji">·</div>
         <div>暂无项目</div>
         <div class="hint">点击右上角 "+ 新项目" 创建第一个项目</div>
       </div>`;
     }
     const dates = [...this.state.data.timelineDates].sort();
-    const active = this.activeDate();
-    const stats = this.projectOverallStats(p);
-    const colsHtml = dates.map(d => this.homeDateColumnHtml(p, d, d === active)).join("");
+    if (!dates.length) {
+      return `<div class="drawers-area"><div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text-3);">该项目还没有时间节点，点击底部时间轴 "＋ 时间节点" 创建</div></div>`;
+    }
+    const activeIdx = Math.max(0, dates.indexOf(this.activeDate()));
+    const colsHtml = dates.map((d, idx) => this.homeDrawerColHtml(p, d, idx, idx === activeIdx)).join("");
 
     return `
-      <div class="home-grid">
-        <div class="home-header">
-          <h2>
-            <span style="font-size:24px;">${p.emoji || "?"}</span>
-            ${ST.escapeHtml(p.name)}
-            <span class="active-tag">当前节点 ${ST.fmtDate(active)}</span>
-          </h2>
-          <div class="row">
-            ${stats.chips.map(c => `<span class="stat-chip ${c.cls || ""}">${c.label}: <strong>${c.value}</strong></span>`).join("")}
-            <button class="btn-tiny" data-act="open-project">打开项目 ›</button>
-          </div>
-        </div>
-        <div class="timeline-columns">${colsHtml}</div>
+      <div class="drawers-area">
+        <div class="drawers-grid">${colsHtml}</div>
       </div>
     `;
   };
 
-  App.homeDateColumnHtml = function (p, date, isActive) {
-    // 自动展开有活动的细分
-    for (const sec of p.sectors) for (const sd of sec.subdivisions) {
-      const hasActivity = (sd.trackingEntries||[]).some(e => e.date === date)
-        || (sd.stocks||[]).some(st =>
-            (st.snapshots||[]).some(s => s.date === date)
-            || (st.operations||[]).some(o => o.date === date));
-      if (hasActivity) this.state.expanded.add(this.expKey(date, sec.id, sd.id));
-    }
+  // V11 · 单个时间节点抽屉（按 prototype-v18）
+  App.homeDrawerColHtml = function (p, date, idx, isActive) {
     const meta = ST.getTimelineMeta(this.state.data, date);
-    let totalTracking = 0, totalSnap = 0, totalOp = 0;
-    for (const sec of p.sectors) {
-      for (const e of (sec.trackingEntries || [])) if (e.date === date) totalTracking++;
-      for (const sd of sec.subdivisions) {
-        for (const e of (sd.trackingEntries || [])) if (e.date === date) totalTracking++;
-        for (const st of (sd.stocks || [])) {
-          for (const s of (st.snapshots || [])) if (s.date === date) totalSnap++;
-          for (const o of (st.operations || [])) if (o.date === date) totalOp++;
-        }
-      }
-    }
-    const sectorsHtml = p.sectors.map(sec => this.homeSectorBlockHtml(sec, date)).join("");
+    const sectorsHtml = (p.sectors || []).map(sec => this.homeSectorBlockHtml(sec, date)).join("");
     return `
-      <div class="timeline-col ${isActive ? "is-active" : ""}">
-        <div class="timeline-col-head">
-          <div class="col-date-row">
+      <div class="drawer-col ${isActive ? "is-active" : ""}" data-idx="${idx}" data-date="${date}">
+        <div class="drawer-head">
+          <div class="row1">
             <span class="date">${ST.fmtDate(date)}</span>
-            <div class="col-row-actions">
-              <button class="btn-tiny btn-add-sector" data-act="add-sector-from-col" data-date="${date}" title="在此项目下新增板块">＋板块</button>
-              <span class="col-edit" data-act="edit-timeline-node" data-date="${date}" title="编辑节点标签/备注">✎</span>
-            </div>
+            <input class="title-input" data-date="${date}" value="${ST.escapeHtml(meta.label || "")}" placeholder="点击编辑事件标签…" />
           </div>
-          ${meta.label ? `<div class="col-label" title="${ST.escapeHtml(meta.label)}${meta.note ? '\n' + ST.escapeHtml(meta.note) : ''}">${ST.escapeHtml(meta.label)}</div>` : `<div class="col-label col-label-empty">未命名事件</div>`}
-          <div class="col-stats">
-            ${totalTracking ? `<span class="stat-chip blue">📝 ${totalTracking}</span>` : ''}
-            ${totalSnap     ? `<span class="stat-chip purple">📊 ${totalSnap}</span>` : ''}
-            ${totalOp       ? `<span class="stat-chip green">⚡ ${totalOp}</span>` : ''}
-          </div>
+          ${meta.note ? `<div class="row2 muted">${ST.escapeHtml(meta.note)}</div>` : ""}
         </div>
-        <div class="timeline-col-body">
-          ${sectorsHtml || (!p.sectors.length ? `<div class="empty-state" style="padding:30px 10px;"><div class="emoji" style="font-size:32px;">-</div><div class="hint">该项目还没有板块</div></div>` : '')}
+        <div class="drawer-body">
+          <div class="sectors-list">${sectorsHtml || (!p.sectors.length ? `<div class="empty-state" style="padding:30px 10px;"><div class="emoji">·</div><div>该项目还没有板块</div></div>` : "")}</div>
+          <div style="padding:0 12px 12px;">
+            <button class="add-btn add-sector-bottom" data-act="add-sector-from-drawer" data-date="${date}">＋ 在此抽屉添加板块</button>
+          </div>
         </div>
       </div>
     `;
   };
 
+  // V11 · 板块块（按 prototype-v18 sector-block）
   App.homeSectorBlockHtml = function (sec, date) {
-    const subdivsHtml = sec.subdivisions.map(sd => this.homeSubdivBlockHtml(sec, sd, date)).join("");
     const sectorColor = sec.color || ((sec.chainNodes && sec.chainNodes[0]) ? sec.chainNodes[0].color : "#58a6ff");
     const sectorIcon = sec.icon || "·";
-    const trackingSec = (sec.trackingEntries || []).filter(e => e.date === date);
+    const subdivsHtml = (sec.subdivisions || []).map(sd => this.homeSubdivItemHtml(sec, sd, date)).join("");
+    const stockTotal = (sec.subdivisions || []).reduce((s, sd) => s + ((sd.stocks || []).length), 0);
     return `
-      <div class="h-sector">
-        <div class="h-sector-head">
-          <span class="color-dot" style="background:${sectorColor};box-shadow:0 0 6px ${sectorColor};"></span>
-          <span class="sector-icon" style="color:${sectorColor};" title="${ST.escapeHtml(sec.name)}">${sectorIcon}</span>
-          <span class="name" data-act="open-sector" data-sector-id="${sec.id}" title="打开产业链全景图">${ST.escapeHtml(sec.name)}</span>
-          <span class="muted" style="font-size:11px;">${sec.subdivisions.length}细·${sec.subdivisions.reduce((s,x)=>s+(x.stocks||[]).length,0)}股</span>
-          <button class="btn-tiny" data-act="add-subdivision" data-sector-id="${sec.id}" title="新增细分">＋</button>
-          <button class="btn-tiny" data-act="edit-sector" data-sector-id="${sec.id}" title="编辑板块（图标/颜色/整体跟踪）">✎</button>
+      <div class="sector-block" data-sid="${sec.id}" data-date="${date}">
+        <div class="sector-block-head" data-act="open-sector" data-sector-id="${sec.id}">
+          <span class="sector-color-dot" style="background:${sectorColor};box-shadow:0 0 6px ${sectorColor};"></span>
+          <span class="sector-icon" style="color:${sectorColor};">${sectorIcon}</span>
+          <span class="sector-name">${ST.escapeHtml(sec.name)}</span>
+          <span class="sector-meta">${(sec.subdivisions || []).length} 细 · ${stockTotal} 股</span>
+          <button class="sector-menu-btn" data-act="open-menu" title="编辑/删除板块" data-block-type="sector">⋯</button>
         </div>
-        <div class="h-sector-tracking">
-          <div class="h-track-form">
-            <input class="input h-track-input" data-sector-id="${sec.id}" data-date="${date}" placeholder="📝 在 ${ST.fmtDate(date)} 录入板块级跟踪，回车保存" onkeydown="App.quickAddSectorTracking(event, '${sec.id}', '${date}')" />
-          </div>
-          ${trackingSec.length ? `<div class="h-track-list">${trackingSec.map(e => `<div class="h-track-item h-track-sector"><span class="content">${ST.escapeHtml(e.content)}</span><button class="btn-tiny" data-act="edit-sector-tracking" data-sector-id="${sec.id}" data-entry-id="${e.id}" title="编辑">✎</button><button class="btn-del" data-act="del-sector-tracking" data-sector-id="${sec.id}" data-entry-id="${e.id}" title="删除">✕</button></div>`).join("")}</div>` : ""}
-        </div>
-        <div class="h-sector-body">
-          ${subdivsHtml || `<div class="muted" style="padding:8px;font-size:12px;text-align:center;">该板块还没有细分领域，点击＋ 新增</div>`}
+        <div class="subdiv-list">${subdivsHtml}</div>
+        <div style="padding:10px 14px;">
+          <button class="add-btn" data-act="add-subdivision" data-sid="${sec.id}" data-date="${date}">＋ 添加细分领域</button>
         </div>
       </div>
     `;
-  }
+  };
+
+  // V11 · 细分子项（按 prototype-v18 subdiv-item + stock-chip）
+  App.homeSubdivItemHtml = function (sec, sd, date) {
+    const stocks = sd.stocks || [];
+    const stocksHtml = stocks.length === 0
+      ? '<span class="stock-chip-empty">暂无个股</span>'
+      : '<div class="stock-list-inline">' + stocks.map(st => {
+          const op = (st.operations || []).find(o => o.date === date);
+          const opMeta = op ? ST.opTypeMeta(op.type) : null;
+          return `<div class="stock-chip" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" title="${ST.escapeHtml(st.name)}">
+            <span>${ST.escapeHtml(st.ticker)}</span>
+            ${opMeta ? `<span class="chip-op-dot" style="background:${opMeta.color};"></span>` : ""}
+            <button class="stock-chip-del" data-act="del-stock" data-stock-id="${st.id}" title="删除个股">✕</button>
+          </div>`;
+        }).join("") + '</div>';
+    return `
+      <div class="subdiv-item" data-sd-id="${sd.id}" data-date="${date}">
+        <div class="subdiv-row">
+          <span class="subdiv-icon">${sd.icon || "·"}</span>
+          <span class="subdiv-name" data-act="open-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">${ST.escapeHtml(sd.name)} ›</span>
+          <button class="subdiv-menu-btn" data-act="open-menu" title="编辑/删除细分" data-block-type="subdiv">⋯</button>
+        </div>
+        ${stocksHtml}
+        <button class="add-btn" data-act="add-stock" data-sid="${sd.id}" data-date="${date}">＋ 添加个股</button>
+      </div>
+    `;
+  };
+
+  // 兼容旧名：homeSubdivBlockHtml / homeStockRowHtml（已废弃，由 homeSubdivItemHtml 替代）
+  App.homeSubdivBlockHtml = App.homeSubdivItemHtml;
+  App.homeStockRowHtml = function () { return ""; };
   App.homeSubdivBlockHtml = function (sec, sd, date) {
     const key = this.expKey(date, sec.id, sd.id);
     const isOpen = this.state.expanded.has(key);
@@ -613,124 +607,152 @@ App.projectOverallStats = function (p) {
   };
 
   // ============================================================
-  // 视图 · 板块 -> 产业链全景 + 4 列细分抽屉 + 时间轴
+  // 视图 · 板块（V11 · 按 prototype-v17-sector 整体重做）
+  //   顶部 detail-header · 画布 · 板块信息 · 5 列时间节点跟踪抽屉 + 时间轴
   // ============================================================
   App.viewSector = function (projectId, sectorId) {
     const p = ST.findProject(this.state.data, projectId);
     const sec = p && ST.findSector(p, sectorId);
-    if (!sec) return `<div class="empty-state"><div class="emoji">-</div>板块不存在</div>`;
+    if (!sec) return `<div class="empty-state"><div class="emoji">·</div>板块不存在</div>`;
 
     const nodeMap = {};
     sec.subdivisions.forEach(sd => { if (sd.chainNodeId) nodeMap[sd.chainNodeId] = sd; });
 
-    // 4 列抽屉：每个细分 = 1 抽屉
-    const subs = sec.subdivisions || [];
-    const drawerCount = subs.length;
+    // 5 列时间节点抽屉（按 prototype-v17-sector）
+    const dates = [...this.state.data.timelineDates].sort();
+    if (!dates.length) {
+      return `<div class="detail-page v11-sector"><div class="detail-head"><h2><span style="font-size:28px;color:${sec.color || '#58a6ff'}">${sec.icon || '·'}</span>${ST.escapeHtml(sec.name)}</h2></div><div class="empty-state"><div class="emoji">·</div><div>请先在底部时间轴添加时间节点</div></div></div>`;
+    }
+
+    // 取当前可视时间节点（pageSize=5）
+    const pageSize = 5;
+    const activeDate = this.activeDate();
+    let pageStart = 0;
+    if (activeDate) {
+      const idx = dates.indexOf(activeDate);
+      pageStart = Math.floor(idx / pageSize) * pageSize;
+    }
+    const visibleDates = dates.slice(pageStart, pageStart + pageSize);
     const sectorKey = sec.id;
-    // 取 4 个最新细分（按 createdAt / id）
-    const sortedSubs = subs.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || (b.id || "").localeCompare(a.id || ""));
-    const displaySubs = sortedSubs.slice(0, 4);
-    const subDrawerHtml = displaySubs.map((sd, idx) => {
-      const node = sec.chainNodes.find(n => n.id === sd.chainNodeId);
-      const stockCount = (sd.stocks || []).length;
-      const trackCount = (sd.trackingEntries || []).length;
+    const drawerHtml = visibleDates.map((d, localIdx) => {
+      const globalIdx = pageStart + localIdx;
+      const isActive = d === activeDate;
+      const meta = ST.getTimelineMeta(this.state.data, d);
+      // 板块级 + 细分级跟踪条目
+      const sectorTracks = (sec.trackingEntries || []).filter(e => e.date === d);
+      const subdivTracks = [];
+      for (const sd of (sec.subdivisions || [])) {
+        for (const e of (sd.trackingEntries || [])) if (e.date === d) subdivTracks.push({ sd, e });
+      }
+      // stats
+      let snapCount = 0, opCount = 0;
+      for (const sd of (sec.subdivisions || [])) {
+        for (const st of (sd.stocks || [])) {
+          snapCount += (st.snapshots || []).filter(s => s.date === d).length;
+          opCount += (st.operations || []).filter(o => o.date === d).length;
+        }
+      }
       return `
-        <div class="op-drawer ${idx === 0 ? " is-active" : ""}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}" data-stock-op-id="">
-          <div class="op-drawer-head">
-            <div class="op-drawer-label-row">
-              <span class="op-drawer-date" style="color:${sd.color || sec.color || "#58a6ff"};">${ST.escapeHtml(sd.name)}</span>
-            </div>
-            <div class="op-drawer-actions">
-              <button data-act="open-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="进入细分">›</button>
-            </div>
+        <div class="track-drawer-col ${isActive ? "is-active" : ""}" data-date="${d}" data-sector-op-id="${sec.id}">
+          <div class="track-drawer-head">
+            <input class="label" data-date="${d}" data-field="label" value="${ST.escapeHtml(meta.label || "")}" placeholder="点击编辑标签…" />
           </div>
-          <div class="op-drawer-body">
-            <div class="op-block">
-              <div class="block-title">📍 产业链定位</div>
-              <div class="op-block-content">${node ? ST.escapeHtml(node.label) : "未关联"}</div>
+          <div class="track-drawer-body">
+            <div class="track-drawer-stats">
+              ${snapCount ? `<span class="stat-badge snap">📸${snapCount}</span>` : ""}
+              ${opCount ? `<span class="stat-badge buy">⚡${opCount}</span>` : ""}
+              ${sectorTracks.length ? `<span class="stat-badge note">📝${sectorTracks.length}</span>` : ""}
+              ${subdivTracks.length ? `<span class="stat-badge watch">📍${subdivTracks.length}</span>` : ""}
             </div>
-            <div class="op-block">
-              <div class="block-title">📊 规模</div>
-              <div class="op-fields-row">
-                <div class="op-field">
-                  <label>个股</label>
-                  <div class="op-block-content" style="font-size:14px;">${stockCount}</div>
-                </div>
-                <div class="op-field">
-                  <label>跟踪</label>
-                  <div class="op-block-content" style="font-size:14px;">${trackCount}</div>
-                </div>
-              </div>
+            <textarea class="track-drawer-textarea" data-date="${d}" data-field="content" placeholder="记录 ${d} 板块产业信息…">${ST.escapeHtml(meta.note || "")}</textarea>
+            <div class="track-drawer-status">
+              <span class="status-text ${meta.note ? "saved" : ""}">${meta.note ? "✓ 已加载" : "空"}</span>
+              <button class="clear-btn" data-act="clear-sector-track" data-date="${d}">清空</button>
             </div>
-            ${sd.description ? `
-            <div class="op-block">
-              <div class="block-title">📝 简介</div>
-              <div class="op-block-content" style="white-space:pre-wrap;line-height:1.5;">${ST.escapeHtml(sd.description)}</div>
-            </div>
-            ` : ""}
           </div>
         </div>
       `;
     }).join("");
 
     return `
-      <div class="detail-page v10-page">
-        <div class="detail-head">
-          <h2>
-            <span style="font-size:28px;color:${sec.color || '#58a6ff'}">${sec.icon || '·'}</span>
-            ${ST.escapeHtml(sec.name)}
-            <button class="btn-tiny" data-act="edit-sector" data-sector-id="${sec.id}">编辑</button>
-          </h2>
-          <div class="meta">
-            <span class="tag">${sec.chainNodes.length} 个节点</span>
-            <span class="tag">${sec.subdivisions.length} 个细分领域</span>
-            <span class="tag">${sec.subdivisions.reduce((s, x) => s + (x.stocks || []).length, 0)} 个股</span>
-            <button class="btn-tiny" data-act="add-chain-node" data-sector-id="${sec.id}">+ 产业链节点</button>
-          </div>
-        </div>
-        <div class="muted" style="font-size:13px;margin-bottom:8px;line-height:1.6;">${ST.escapeHtml(sec.description || "")}</div>
-
-        <!-- 画布 -->
-        <div class="chain-stage">
-          <div class="chain-header">
-            <h3>· 产业链全景图 · 点击节点进入细分领域</h3>
-            <div class="muted" style="font-size:12px;">实线 = 已有细分领域；虚线 = 待补充</div>
-          </div>
-          <div class="chain-canvas-wrap" id="chainCanvasWrap" data-sector-id="${sec.id}"></div>
-          <div class="chain-legend">
-            ${sec.chainNodes.map(n => {
-              const has = nodeMap[n.id];
-              return `<span class="item"><span class="swatch" style="background:${n.color};"></span>${ST.escapeHtml(n.label)}${has ? " ·已配" : " (待补充)"}</span>`;
-            }).join("")}
-          </div>
-        </div>
-
-        <!-- V10 · 4 列细分抽屉 + 时间轴 -->
-        <div class="chain-stage" style="margin-top:18px;">
-          <div class="chain-header">
-            <h3>· 细分领域 · ${drawerCount > 0 ? drawerCount + " 个，按最新优先排序" : "暂无"}</h3>
-            <div class="muted" style="font-size:12px;">点击抽屉右侧 › 进入细分领域查看详情</div>
-          </div>
-          ${drawerCount > 0 ? `
-          <div class="track-drawers-wrap" style="margin-top:8px;">
-            <button class="track-nav prev" data-act="sub-rail-prev" data-sector-op-rail="${sectorKey}" ${drawerCount <= 4 ? "disabled" : ""}>‹</button>
-            <div class="op-drawers-grid" data-sector-op-drawers="${sectorKey}">${subDrawerHtml}</div>
-            <button class="track-nav next" data-act="sub-rail-next" data-sector-op-rail="${sectorKey}" ${drawerCount <= 4 ? "disabled" : ""}>›</button>
-          </div>
-          <div class="track-rail-wrap">
-            <button class="track-rail-nav prev" data-act="sub-rail-prev" data-sector-op-rail="${sectorKey}" disabled>‹</button>
-            <div class="track-rail-track" data-sector-op-rail="${sectorKey}">
-              <div class="track-rail-axis"></div>
-              <div class="track-rail-axis-progress"></div>
+      <div class="detail-page v11-sector">
+        <header class="detail-header">
+          <a class="back-link" data-act="go-home" href="javascript:void(0)">‹ 返回主页</a>
+          <div class="sector-icon-lg" style="color:${sec.color || "#58a6ff"};">${sec.icon || "·"}</div>
+          <div class="sector-title-wrap">
+            <div class="sector-title-row">
+              <span class="sector-title">${ST.escapeHtml(sec.name)}</span>
+              <button class="btn-tiny" data-act="edit-sector" data-sector-id="${sec.id}">✎</button>
             </div>
-            <button class="track-rail-nav next" data-act="sub-rail-next" data-sector-op-rail="${sectorKey}" disabled>›</button>
-            <button class="track-rail-add" data-act="add-subdivision" data-sector-id="${sec.id}" title="新增细分">+</button>
+            <div class="sector-crumbs">
+              <a data-act="go-home" href="javascript:void(0)">主页</a>
+              <span class="sep">/</span>
+              <span>${ST.escapeHtml(sec.name)}</span>
+            </div>
           </div>
-          ` : `<div class="empty-state" style="padding:30px 10px;">
-              <div class="emoji" style="font-size:32px;">·</div>
-              <div>该板块还没有细分领域，点击产业链节点上的虚线圆圈补充</div>
-              <button class="btn-tiny" data-act="add-subdivision" data-sector-id="${sec.id}" style="margin-top:8px;">+ 新增细分</button>
-            </div>`}
+        </header>
+        <div class="detail-body">
+          <!-- 画布 -->
+          <section class="panel canvas-panel">
+            <div class="panel-head">
+              <h3>🔗 产业链画布</h3>
+              <span class="hint">拖拽节点 · 双击编辑 · 从节点边缘 4 个连接点拖到另一节点连线 · Delete 删除选中</span>
+            </div>
+            <div class="canvas-toolbar">
+              <button class="tool-btn primary" data-act="add-chain-node" data-sector-id="${sec.id}">＋ 添加节点</button>
+              <span class="grow"></span>
+              <button class="tool-btn danger" data-act="clear-sector-chain" data-sector-id="${sec.id}">清空</button>
+            </div>
+            <div class="chain-canvas" id="chainCanvas">
+              <div class="chain-canvas-inner" id="chainCanvasInner">
+                <svg class="chain-canvas-svg" id="chainCanvasSvg"></svg>
+              </div>
+            </div>
+          </section>
+
+          <!-- 板块信息字段（可点击编辑） -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3>📝 板块信息</h3>
+              <span class="hint">点击字段右侧 ✎ 按钮弹窗编辑</span>
+            </div>
+            <div class="info-list">
+              <div class="info-field" data-field="name">
+                <div class="label">板块名称</div>
+                <div class="value">${ST.escapeHtml(sec.name)}</div>
+                <div class="actions">
+                  <button class="field-act" data-act="edit-sector-field" data-sector-id="${sec.id}" data-field="name" title="编辑">✎</button>
+                  <button class="field-act danger" data-act="clear-sector-field" data-sector-id="${sec.id}" data-field="name" title="清空">🗑</button>
+                </div>
+              </div>
+              <div class="info-field" data-field="desc">
+                <div class="label">板块简介</div>
+                <div class="value" style="white-space:pre-wrap;">${ST.escapeHtml(sec.description || "—")}</div>
+                <div class="actions">
+                  <button class="field-act" data-act="edit-sector-field" data-sector-id="${sec.id}" data-field="desc" title="编辑">✎</button>
+                  <button class="field-act danger" data-act="clear-sector-field" data-sector-id="${sec.id}" data-field="desc" title="清空">🗑</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- V11 · 5 列时间节点跟踪抽屉 + 时间轴 -->
+          <section class="panel track-panel">
+            <div class="track-drawers-wrap">
+              <button class="track-nav prev" data-act="sec-rail-prev" data-sector-op-rail="${sectorKey}" ${pageStart === 0 ? "disabled" : ""}>‹</button>
+              <div class="track-drawers-grid" data-sector-op-drawers="${sectorKey}">${drawerHtml}</div>
+              <button class="track-nav next" data-act="sec-rail-next" data-sector-op-rail="${sectorKey}" ${pageStart + pageSize >= dates.length ? "disabled" : ""}>›</button>
+            </div>
+            <div class="track-rail-wrap">
+              <button class="track-rail-nav prev" data-act="sec-rail-prev" data-sector-op-rail="${sectorKey}" ${pageStart === 0 ? "disabled" : ""}>‹</button>
+              <div class="track-rail-track" data-sector-op-rail="${sectorKey}">
+                <div class="track-rail-axis"></div>
+                <div class="track-rail-axis-progress"></div>
+              </div>
+              <button class="track-rail-nav next" data-act="sec-rail-next" data-sector-op-rail="${sectorKey}" ${pageStart + pageSize >= dates.length ? "disabled" : ""}>›</button>
+              <button class="track-rail-add" data-act="add-timeline-node" title="添加时间节点">＋</button>
+            </div>
+          </section>
         </div>
       </div>
     `;
@@ -783,159 +805,160 @@ App.projectOverallStats = function (p) {
   };
 
   // ============================================================
-  // 视图 · 细分领域 -> 局部拼图 + 4 列个股抽屉 + 时间轴 + 跟踪
+  // 视图 · 细分领域（V11 · 按 prototype-v17-subdivision 整体重做）
+  //   顶部 detail-header · 画布（缩放拼图）· 细分信息 · 5 列时间节点抽屉（带个股栏）+ 时间轴
   // ============================================================
   App.viewSubdivision = function (projectId, sectorId, subdivisionId) {
     const p = ST.findProject(this.state.data, projectId);
     const sec = p && ST.findSector(p, sectorId);
     const sd  = sec && ST.findSubdivision(sec, subdivisionId);
-    if (!sd) return `<div class="empty-state"><div class="emoji">-</div>细分领域不存在</div>`;
-    const active = this.activeDate();
+    if (!sd) return `<div class="empty-state"><div class="emoji">·</div>细分领域不存在</div>`;
 
-    const entries = [...(sd.trackingEntries || [])].sort((a, b) => b.date.localeCompare(a.date));
+    const dates = [...this.state.data.timelineDates].sort();
+    if (!dates.length) {
+      return `<div class="detail-page v11-sd"><header class="detail-header"><a class="back-link" data-act="open-sector" data-sector-id="${sec.id}" href="javascript:void(0)">‹ 返回板块</a><div class="sector-title-wrap"><div class="sector-title-row"><span class="sector-title">${ST.escapeHtml(sd.name)}</span></div></div></header><div class="empty-state"><div class="emoji">·</div><div>请先在底部时间轴添加时间节点</div></div></div>`;
+    }
 
-    // 4 列个股抽屉
-    const stocks = sd.stocks || [];
-    const drawerCount = stocks.length;
+    // 找当前 chainNode 位置（用于缩放拼图）
+    const idx = sec.chainNodes.findIndex(n => n.id === sd.chainNodeId);
+    const prev = idx > 0 ? sec.chainNodes[idx - 1] : null;
+    const next = idx < sec.chainNodes.length - 1 ? sec.chainNodes[idx + 1] : null;
+    const cur  = sec.chainNodes[idx];
+
+    // 5 列时间节点抽屉
+    const pageSize = 5;
+    const activeDate = this.activeDate();
+    let pageStart = 0;
+    if (activeDate) {
+      const di = dates.indexOf(activeDate);
+      pageStart = Math.floor(di / pageSize) * pageSize;
+    }
+    const visibleDates = dates.slice(pageStart, pageStart + pageSize);
     const subKey = sd.id;
-    const sortedStocks = stocks.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || (b.id || "").localeCompare(a.id || ""));
-    const displayStocks = sortedStocks.slice(0, 4);
-    const stockDrawerHtml = displayStocks.map((st, idx) => {
-      const op = ST.latestOperationBefore(st, active);
-      const snap = ST.latestSnapshotBefore(st, active);
-      const opMeta = op ? ST.opTypeMeta(op.type) : null;
-      const priceStr = snap && snap.price != null ? ST.fmtNum(snap.price) : "—";
-      const peStr = snap && snap.valuation && snap.valuation.pe != null ? ST.fmtNum(snap.valuation.pe) : "—";
-      const opBadge = opMeta
-        ? `<span class="op-badge" style="color:${opMeta.color};border-color:${opMeta.color}50;background:${opMeta.color}18;">${opMeta.icon} ${opMeta.label}</span>`
-        : `<span class="op-badge" style="color:#7d8590;border-color:#7d859050;background:transparent;">—</span>`;
+    const drawerHtml = visibleDates.map((d, localIdx) => {
+      const globalIdx = pageStart + localIdx;
+      const isActive = d === activeDate;
+      const meta = ST.getTimelineMeta(this.state.data, d);
+      // stats
+      let snapCount = 0, opCount = 0;
+      for (const st of (sd.stocks || [])) {
+        snapCount += (st.snapshots || []).filter(s => s.date === d).length;
+        opCount += (st.operations || []).filter(o => o.date === d).length;
+      }
+      const tracks = (sd.trackingEntries || []).filter(e => e.date === d);
+      // 当日个股 chip
+      const stocksDay = (sd.stocks || []).map(st => {
+        const op = (st.operations || []).find(o => o.date === d);
+        const opMeta = op ? ST.opTypeMeta(op.type) : null;
+        return `<div class="track-stock-row" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">
+          <span class="s-ticker">${ST.escapeHtml(st.ticker)}</span>
+          <span class="s-name">${ST.escapeHtml(st.name)}</span>
+          ${opMeta ? `<span class="s-op" style="color:${opMeta.color};">${opMeta.icon} ${opMeta.label}</span>` : '<span></span>'}
+        </div>`;
+      }).join("");
       return `
-        <div class="op-drawer ${idx === 0 ? " is-active" : ""}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}" data-stock-op-id="${st.id}">
-          <div class="op-drawer-head">
-            <div class="op-drawer-label-row">
-              <span class="op-drawer-date" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" style="cursor:pointer;">${ST.escapeHtml(st.name)}</span>
-            </div>
-            <div class="op-drawer-actions">
-              <button data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" title="进入个股">›</button>
-            </div>
+        <div class="track-drawer-col ${isActive ? "is-active" : ""}" data-date="${d}" data-subdivision-op-id="${sd.id}">
+          <div class="track-drawer-head">
+            <input class="label" data-date="${d}" data-field="label" value="${ST.escapeHtml(meta.label || "")}" placeholder="点击编辑标签…" />
           </div>
-          <div class="op-drawer-body">
-            <div class="op-block">
-              <div class="block-title">🏷 标识</div>
-              <div class="op-block-content">${ST.escapeHtml(st.ticker)} · ${ST.escapeHtml(st.market || "")}</div>
+          <div class="track-drawer-body">
+            <div class="track-drawer-stats">
+              ${snapCount ? `<span class="stat-badge snap">📸${snapCount}</span>` : ""}
+              ${opCount ? `<span class="stat-badge buy">⚡${opCount}</span>` : ""}
+              ${tracks.length ? `<span class="stat-badge note">📝${tracks.length}</span>` : ""}
             </div>
-            <div class="op-block">
-              <div class="block-title">📊 估值</div>
-              <div class="op-fields-row">
-                <div class="op-field">
-                  <label>价格</label>
-                  <div class="op-block-content" style="font-size:14px;">$${priceStr}</div>
-                </div>
-                <div class="op-field">
-                  <label>PE</label>
-                  <div class="op-block-content" style="font-size:14px;">${peStr}</div>
-                </div>
-                <div class="op-field">
-                  <label>评级</label>
-                  <div class="op-block-content">${opBadge}</div>
-                </div>
-              </div>
+            <textarea class="track-drawer-textarea" data-date="${d}" data-field="content" placeholder="记录 ${d} 细分产业信息…">${ST.escapeHtml(meta.note || "")}</textarea>
+            <div class="track-drawer-status">
+              <span class="status-text ${meta.note ? "saved" : ""}">${meta.note ? "✓ 已加载" : "空"}</span>
+              <button class="clear-btn" data-act="clear-sd-track" data-date="${d}">清空</button>
             </div>
-            ${st.concept ? `
-            <div class="op-block">
-              <div class="block-title">💡 概念</div>
-              <div class="op-block-content" style="line-height:1.5;">${ST.escapeHtml(st.concept)}</div>
+            <div class="track-drawer-stocks">
+              <div class="track-drawer-stocks-head">📌 关联个股 <span class="count">${(sd.stocks || []).length}</span></div>
+              <div class="track-drawer-stocks-list">${stocksDay || '<div class="track-stock-empty">暂无关联个股</div>'}</div>
             </div>
-            ` : ""}
           </div>
         </div>
       `;
     }).join("");
 
     return `
-      <div class="detail-page v10-page">
-        <div class="detail-head">
-          <h2>
-            <span style="font-size:28px;color:${sd.color || "#58a6ff"}">${sd.icon || "·"}</span>
-            ${ST.escapeHtml(sd.name)}
-            <button class="btn-tiny" data-act="edit-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">编辑</button>
-          </h2>
-          <div class="meta">
-            <span class="tag">所属板块：${ST.escapeHtml(sec.name)}</span>
-            <span class="tag">产业链节点：${sec.chainNodes.find(n => n.id === sd.chainNodeId) ? ST.escapeHtml(sec.chainNodes.find(n => n.id === sd.chainNodeId).label) : "未关联"}</span>
-            <span class="tag">当前节点 ${ST.fmtDate(active)}</span>
-          </div>
-        </div>
-
-        <!-- puzzle 局部拼图 -->
-        <div class="puzzle-panel">
-          <div class="row" style="justify-content:space-between;">
-            <h3 style="margin:0;font-size:15px;">· 局部拼图 · 产业链定位</h3>
-            <span class="muted" style="font-size:11px;">聚焦此节点在产业链中的位置</span>
-          </div>
-          <div class="puzzle-stage" id="puzzleStage" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}"></div>
-          <div class="muted" style="font-size:12px;line-height:1.6;">
-            拼图视角下，您正聚焦 <b style="color:${sd.color || "#58a6ff"}">${ST.escapeHtml(sd.name)}</b> 在产业链中的位置。
-            上下游节点和供给关系一目了然，并随时间轴变化更新跟踪内容。
-          </div>
-        </div>
-
-        <!-- V10 · 4 列个股抽屉 + 时间轴 -->
-        <div class="chain-stage" style="margin-top:18px;">
-          <div class="chain-header">
-            <h3>· 个股 · ${drawerCount > 0 ? drawerCount + " 个，按最新优先排序" : "暂无"}</h3>
-            <div class="muted" style="font-size:12px;">点击抽屉右侧 › 进入个股查看详情</div>
-          </div>
-          ${drawerCount > 0 ? `
-          <div class="track-drawers-wrap" style="margin-top:8px;">
-            <button class="track-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" ${drawerCount <= 4 ? "disabled" : ""}>‹</button>
-            <div class="op-drawers-grid" data-subdivision-op-drawers="${subKey}">${stockDrawerHtml}</div>
-            <button class="track-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" ${drawerCount <= 4 ? "disabled" : ""}>›</button>
-          </div>
-          <div class="track-rail-wrap">
-            <button class="track-rail-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" disabled>‹</button>
-            <div class="track-rail-track" data-subdivision-op-rail="${subKey}">
-              <div class="track-rail-axis"></div>
-              <div class="track-rail-axis-progress"></div>
+      <div class="detail-page v11-sd">
+        <header class="detail-header">
+          <a class="back-link" data-act="open-sector" data-sector-id="${sec.id}" href="javascript:void(0)">‹ 返回板块</a>
+          <div class="sector-icon-lg" style="color:${sd.color || "#58a6ff"};">${sd.icon || "·"}</div>
+          <div class="sector-title-wrap">
+            <div class="sector-title-row">
+              <span class="sector-title">${ST.escapeHtml(sd.name)}</span>
+              <button class="btn-tiny" data-act="edit-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">✎</button>
             </div>
-            <button class="track-rail-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" disabled>›</button>
-            <button class="track-rail-add" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="新增个股">+</button>
+            <div class="sector-crumbs">
+              <a data-act="go-home" href="javascript:void(0)">主页</a>
+              <span class="sep">/</span>
+              <a data-act="open-sector" data-sector-id="${sec.id}" href="javascript:void(0)">${ST.escapeHtml(sec.name)}</a>
+              <span class="sep">/</span>
+              <span>${ST.escapeHtml(sd.name)}</span>
+            </div>
           </div>
-          ` : `<div class="empty-state" style="padding:30px 10px;">
-              <div class="emoji" style="font-size:32px;">·</div>
-              <div>该细分领域还没有个股</div>
-              <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" style="margin-top:8px;">+ 新增个股</button>
-            </div>`}
-        </div>
-
-        <!-- 跟踪面板 -->
-        <div class="chain-stage" style="margin-top:18px;">
-          <div class="chain-header">
-            <h3>· 产业跟踪内容 · ${entries.length} 条</h3>
-          </div>
-          <div class="tracking-list" id="trackingList">
-            ${entries.length ? entries.slice(0, 6).map(e => `
-              <div class="tracking-item" style="border-left-color:${sd.color || "#58a6ff"}">
-                <div class="date">
-                  <span>${ST.fmtDate(e.date)}</span>
-                  <span class="del" data-act="del-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="删除">x</span>
-                </div>
-                <div class="content">${ST.escapeHtml(e.content).replace(/\n/g, "<br>")}</div>
+        </header>
+        <div class="detail-body">
+          <!-- 缩放拼图（zoom puzzle） -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3>🧩 局部拼图 · 产业链定位</h3>
+              <span class="hint">聚焦此节点在产业链中的位置</span>
+            </div>
+            <div class="puzzle-zoom-wrap">
+              ${prev ? `<div class="puzzle-neighbors left">‹ ${ST.escapeHtml(prev.label)}</div>` : ""}
+              ${next ? `<div class="puzzle-neighbors right">${ST.escapeHtml(next.label)} ›</div>` : ""}
+              <div class="puzzle-zoom" style="color:${cur ? cur.color : "#58a6ff"};">
+                <div class="icon">${cur ? cur.icon : sd.icon || "·"}</div>
+                <div class="label">${ST.escapeHtml(sd.name)}</div>
+                <div class="sub">${cur ? ST.escapeHtml(cur.label) : ""}</div>
               </div>
-            `).join("") : `<div class="muted" style="font-size:12px;padding:16px;text-align:center;">暂无跟踪内容，使用下方表单手动录入</div>`}
-          </div>
-          <div class="divider"></div>
-          <div class="form-row">
-            <label>日期</label>
-            <input class="input" id="trackDate" type="date" value="${active}" />
-          </div>
-          <div class="form-row">
-            <label>跟踪内容</label>
-            <textarea class="textarea" id="trackContent" placeholder="例如：英伟达发布 B300，性能 +50%，功耗 +30%"></textarea>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" data-act="add-tracking" data-subdivision-id="${sd.id}">+ 录入跟踪</button>
-          </div>
+            </div>
+          </section>
+
+          <!-- 细分信息字段 -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3>📝 细分信息</h3>
+              <span class="hint">点击字段右侧 ✎ 按钮弹窗编辑</span>
+            </div>
+            <div class="info-list">
+              <div class="info-field" data-field="name">
+                <div class="label">细分名称</div>
+                <div class="value">${ST.escapeHtml(sd.name)}</div>
+                <div class="actions">
+                  <button class="field-act" data-act="edit-sd-field" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-field="name" title="编辑">✎</button>
+                </div>
+              </div>
+              <div class="info-field" data-field="desc">
+                <div class="label">细分简介</div>
+                <div class="value" style="white-space:pre-wrap;">${ST.escapeHtml(sd.description || "—")}</div>
+                <div class="actions">
+                  <button class="field-act" data-act="edit-sd-field" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-field="desc" title="编辑">✎</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- V11 · 5 列时间节点抽屉 + 时间轴 -->
+          <section class="panel track-panel">
+            <div class="track-drawers-wrap">
+              <button class="track-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" ${pageStart === 0 ? "disabled" : ""}>‹</button>
+              <div class="track-drawers-grid" data-subdivision-op-drawers="${subKey}">${drawerHtml}</div>
+              <button class="track-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" ${pageStart + pageSize >= dates.length ? "disabled" : ""}>›</button>
+            </div>
+            <div class="track-rail-wrap">
+              <button class="track-rail-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" ${pageStart === 0 ? "disabled" : ""}>‹</button>
+              <div class="track-rail-track" data-subdivision-op-rail="${subKey}">
+                <div class="track-rail-axis"></div>
+                <div class="track-rail-axis-progress"></div>
+              </div>
+              <button class="track-rail-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" ${pageStart + pageSize >= dates.length ? "disabled" : ""}>›</button>
+              <button class="track-rail-add" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="添加个股">＋</button>
+            </div>
+          </section>
         </div>
       </div>
     `;
