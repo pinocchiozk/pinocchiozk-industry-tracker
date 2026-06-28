@@ -1,0 +1,15 @@
+{
+  "_type": "industry-tracker-backup",
+  "version": 1,
+  "exportTime": "2026-06-28T09:56:09.067Z",
+  "stats": {
+    "projects": 0,
+    "sectors": 0,
+    "timelines": 0,
+    "stocks": 0
+  },
+  "keyCount": 0,
+  "data": {
+    "industry_tracker_meta_v1": "{\"lastExport\":\"2026-06-28T09:56:09.067Z\"}"
+  }
+}
