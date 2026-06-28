@@ -613,7 +613,7 @@ App.projectOverallStats = function (p) {
   };
 
   // ============================================================
-  // 视图 · 板块 -> 产业链全景
+  // 视图 · 板块 -> 产业链全景 + 4 列细分抽屉 + 时间轴
   // ============================================================
   App.viewSector = function (projectId, sectorId) {
     const p = ST.findProject(this.state.data, projectId);
@@ -623,22 +623,74 @@ App.projectOverallStats = function (p) {
     const nodeMap = {};
     sec.subdivisions.forEach(sd => { if (sd.chainNodeId) nodeMap[sd.chainNodeId] = sd; });
 
+    // 4 列抽屉：每个细分 = 1 抽屉
+    const subs = sec.subdivisions || [];
+    const drawerCount = subs.length;
+    const sectorKey = sec.id;
+    // 取 4 个最新细分（按 createdAt / id）
+    const sortedSubs = subs.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || (b.id || "").localeCompare(a.id || ""));
+    const displaySubs = sortedSubs.slice(0, 4);
+    const subDrawerHtml = displaySubs.map((sd, idx) => {
+      const node = sec.chainNodes.find(n => n.id === sd.chainNodeId);
+      const stockCount = (sd.stocks || []).length;
+      const trackCount = (sd.trackingEntries || []).length;
+      return `
+        <div class="op-drawer ${idx === 0 ? " is-active" : ""}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}" data-stock-op-id="">
+          <div class="op-drawer-head">
+            <div class="op-drawer-label-row">
+              <span class="op-drawer-date" style="color:${sd.color || sec.color || "#58a6ff"};">${ST.escapeHtml(sd.name)}</span>
+            </div>
+            <div class="op-drawer-actions">
+              <button data-act="open-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="进入细分">›</button>
+            </div>
+          </div>
+          <div class="op-drawer-body">
+            <div class="op-block">
+              <div class="block-title">📍 产业链定位</div>
+              <div class="op-block-content">${node ? ST.escapeHtml(node.label) : "未关联"}</div>
+            </div>
+            <div class="op-block">
+              <div class="block-title">📊 规模</div>
+              <div class="op-fields-row">
+                <div class="op-field">
+                  <label>个股</label>
+                  <div class="op-block-content" style="font-size:14px;">${stockCount}</div>
+                </div>
+                <div class="op-field">
+                  <label>跟踪</label>
+                  <div class="op-block-content" style="font-size:14px;">${trackCount}</div>
+                </div>
+              </div>
+            </div>
+            ${sd.description ? `
+            <div class="op-block">
+              <div class="block-title">📝 简介</div>
+              <div class="op-block-content" style="white-space:pre-wrap;line-height:1.5;">${ST.escapeHtml(sd.description)}</div>
+            </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
     return `
-      <div class="detail-page">
+      <div class="detail-page v10-page">
         <div class="detail-head">
           <h2>
-            <span style="font-size:26px;color:${sec.color || '#58a6ff'}">${sec.icon || '·'}</span>
+            <span style="font-size:28px;color:${sec.color || '#58a6ff'}">${sec.icon || '·'}</span>
             ${ST.escapeHtml(sec.name)}
             <button class="btn-tiny" data-act="edit-sector" data-sector-id="${sec.id}">编辑</button>
           </h2>
           <div class="meta">
             <span class="tag">${sec.chainNodes.length} 个节点</span>
             <span class="tag">${sec.subdivisions.length} 个细分领域</span>
+            <span class="tag">${sec.subdivisions.reduce((s, x) => s + (x.stocks || []).length, 0)} 个股</span>
             <button class="btn-tiny" data-act="add-chain-node" data-sector-id="${sec.id}">+ 产业链节点</button>
           </div>
         </div>
-        <div class="muted" style="font-size:13px;margin-bottom:8px;">${ST.escapeHtml(sec.description || "")}</div>
+        <div class="muted" style="font-size:13px;margin-bottom:8px;line-height:1.6;">${ST.escapeHtml(sec.description || "")}</div>
 
+        <!-- 画布 -->
         <div class="chain-stage">
           <div class="chain-header">
             <h3>· 产业链全景图 · 点击节点进入细分领域</h3>
@@ -653,25 +705,32 @@ App.projectOverallStats = function (p) {
           </div>
         </div>
 
+        <!-- V10 · 4 列细分抽屉 + 时间轴 -->
         <div class="chain-stage" style="margin-top:18px;">
           <div class="chain-header">
-            <h3>· 细分领域与个股</h3>
+            <h3>· 细分领域 · ${drawerCount > 0 ? drawerCount + " 个，按最新优先排序" : "暂无"}</h3>
+            <div class="muted" style="font-size:12px;">点击抽屉右侧 › 进入细分领域查看详情</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            ${sec.subdivisions.map(sd => `
-              <div class="subdiv-block">
-                <div class="subdiv-head">
-                  <div class="name" data-act="open-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">
-                    ${sd.icon || "·"} ${ST.escapeHtml(sd.name)}
-                  </div>
-                  <div class="row">
-                    <span class="muted" style="font-size:12px;">${(sd.stocks || []).length} 个股 · ${(sd.trackingEntries || []).length} 跟踪</span>
-                    <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">+ 个股</button>
-                  </div>
-                </div>
-              </div>
-            `).join("") || `<div class="muted" style="padding:20px;text-align:center;">该板块还没有细分领域，点击产业链节点上的虚线圆圈补充</div>`}
+          ${drawerCount > 0 ? `
+          <div class="track-drawers-wrap" style="margin-top:8px;">
+            <button class="track-nav prev" data-act="sub-rail-prev" data-sector-op-rail="${sectorKey}" ${drawerCount <= 4 ? "disabled" : ""}>‹</button>
+            <div class="op-drawers-grid" data-sector-op-drawers="${sectorKey}">${subDrawerHtml}</div>
+            <button class="track-nav next" data-act="sub-rail-next" data-sector-op-rail="${sectorKey}" ${drawerCount <= 4 ? "disabled" : ""}>›</button>
           </div>
+          <div class="track-rail-wrap">
+            <button class="track-rail-nav prev" data-act="sub-rail-prev" data-sector-op-rail="${sectorKey}" disabled>‹</button>
+            <div class="track-rail-track" data-sector-op-rail="${sectorKey}">
+              <div class="track-rail-axis"></div>
+              <div class="track-rail-axis-progress"></div>
+            </div>
+            <button class="track-rail-nav next" data-act="sub-rail-next" data-sector-op-rail="${sectorKey}" disabled>›</button>
+            <button class="track-rail-add" data-act="add-subdivision" data-sector-id="${sec.id}" title="新增细分">+</button>
+          </div>
+          ` : `<div class="empty-state" style="padding:30px 10px;">
+              <div class="emoji" style="font-size:32px;">·</div>
+              <div>该板块还没有细分领域，点击产业链节点上的虚线圆圈补充</div>
+              <button class="btn-tiny" data-act="add-subdivision" data-sector-id="${sec.id}" style="margin-top:8px;">+ 新增细分</button>
+            </div>`}
         </div>
       </div>
     `;
@@ -724,7 +783,7 @@ App.projectOverallStats = function (p) {
   };
 
   // ============================================================
-  // 视图 · 细分领域 -> 局部拼图 + 跟踪
+  // 视图 · 细分领域 -> 局部拼图 + 4 列个股抽屉 + 时间轴 + 跟踪
   // ============================================================
   App.viewSubdivision = function (projectId, sectorId, subdivisionId) {
     const p = ST.findProject(this.state.data, projectId);
@@ -735,11 +794,69 @@ App.projectOverallStats = function (p) {
 
     const entries = [...(sd.trackingEntries || [])].sort((a, b) => b.date.localeCompare(a.date));
 
+    // 4 列个股抽屉
+    const stocks = sd.stocks || [];
+    const drawerCount = stocks.length;
+    const subKey = sd.id;
+    const sortedStocks = stocks.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || (b.id || "").localeCompare(a.id || ""));
+    const displayStocks = sortedStocks.slice(0, 4);
+    const stockDrawerHtml = displayStocks.map((st, idx) => {
+      const op = ST.latestOperationBefore(st, active);
+      const snap = ST.latestSnapshotBefore(st, active);
+      const opMeta = op ? ST.opTypeMeta(op.type) : null;
+      const priceStr = snap && snap.price != null ? ST.fmtNum(snap.price) : "—";
+      const peStr = snap && snap.valuation && snap.valuation.pe != null ? ST.fmtNum(snap.valuation.pe) : "—";
+      const opBadge = opMeta
+        ? `<span class="op-badge" style="color:${opMeta.color};border-color:${opMeta.color}50;background:${opMeta.color}18;">${opMeta.icon} ${opMeta.label}</span>`
+        : `<span class="op-badge" style="color:#7d8590;border-color:#7d859050;background:transparent;">—</span>`;
+      return `
+        <div class="op-drawer ${idx === 0 ? " is-active" : ""}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}" data-stock-op-id="${st.id}">
+          <div class="op-drawer-head">
+            <div class="op-drawer-label-row">
+              <span class="op-drawer-date" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" style="cursor:pointer;">${ST.escapeHtml(st.name)}</span>
+            </div>
+            <div class="op-drawer-actions">
+              <button data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" title="进入个股">›</button>
+            </div>
+          </div>
+          <div class="op-drawer-body">
+            <div class="op-block">
+              <div class="block-title">🏷 标识</div>
+              <div class="op-block-content">${ST.escapeHtml(st.ticker)} · ${ST.escapeHtml(st.market || "")}</div>
+            </div>
+            <div class="op-block">
+              <div class="block-title">📊 估值</div>
+              <div class="op-fields-row">
+                <div class="op-field">
+                  <label>价格</label>
+                  <div class="op-block-content" style="font-size:14px;">$${priceStr}</div>
+                </div>
+                <div class="op-field">
+                  <label>PE</label>
+                  <div class="op-block-content" style="font-size:14px;">${peStr}</div>
+                </div>
+                <div class="op-field">
+                  <label>评级</label>
+                  <div class="op-block-content">${opBadge}</div>
+                </div>
+              </div>
+            </div>
+            ${st.concept ? `
+            <div class="op-block">
+              <div class="block-title">💡 概念</div>
+              <div class="op-block-content" style="line-height:1.5;">${ST.escapeHtml(st.concept)}</div>
+            </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
     return `
-      <div class="detail-page">
+      <div class="detail-page v10-page">
         <div class="detail-head">
           <h2>
-            <span style="font-size:26px;">${sd.icon || "·"}</span>
+            <span style="font-size:28px;color:${sd.color || "#58a6ff"}">${sd.icon || "·"}</span>
             ${ST.escapeHtml(sd.name)}
             <button class="btn-tiny" data-act="edit-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">编辑</button>
           </h2>
@@ -750,79 +867,74 @@ App.projectOverallStats = function (p) {
           </div>
         </div>
 
-        <div class="subdiv-detail">
-          <div class="puzzle-panel">
-            <div class="row" style="justify-content:space-between;">
-              <h3 style="margin:0;font-size:15px;">· 局部拼图 · 产业链定位</h3>
-              <span class="muted" style="font-size:11px;">聚焦此节点在产业链中的位置</span>
-            </div>
-            <div class="puzzle-stage" id="puzzleStage" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}"></div>
-            <div class="muted" style="font-size:12px;line-height:1.6;">
-              拼图视角下，您正聚焦 <b style="color:${sd.color || "#58a6ff"}">${ST.escapeHtml(sd.name)}</b> 在产业链中的位置。
-              上下游节点和供给关系一目了然，并随时间轴变化更新跟踪内容。
-            </div>
+        <!-- puzzle 局部拼图 -->
+        <div class="puzzle-panel">
+          <div class="row" style="justify-content:space-between;">
+            <h3 style="margin:0;font-size:15px;">· 局部拼图 · 产业链定位</h3>
+            <span class="muted" style="font-size:11px;">聚焦此节点在产业链中的位置</span>
           </div>
-
-          <div class="tracking-panel">
-            <h3>· 产业跟踪内容 · 手动输入</h3>
-            <div class="tracking-list" id="trackingList">
-              ${entries.length ? entries.map(e => `
-                <div class="tracking-item" style="border-left-color:${sd.color || "#58a6ff"}">
-                  <div class="date">
-                    <span>${ST.fmtDate(e.date)}</span>
-                    <span class="del" data-act="del-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="删除">x</span>
-                  </div>
-                  <div class="content">${ST.escapeHtml(e.content).replace(/\n/g, "<br>")}</div>
-                </div>
-              `).join("") : `<div class="muted" style="font-size:12px;padding:16px;text-align:center;">暂无跟踪内容，使用下方表单手动录入</div>`}
-            </div>
-            <div class="divider"></div>
-            <div class="form-row">
-              <label>日期</label>
-              <input class="input" id="trackDate" type="date" value="${active}" />
-            </div>
-            <div class="form-row">
-              <label>跟踪内容</label>
-              <textarea class="textarea" id="trackContent" placeholder="例如：英伟达发布 B300，性能 +50%，功耗 +30%"></textarea>
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-primary" data-act="add-tracking" data-subdivision-id="${sd.id}">+ 录入跟踪</button>
-            </div>
+          <div class="puzzle-stage" id="puzzleStage" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}"></div>
+          <div class="muted" style="font-size:12px;line-height:1.6;">
+            拼图视角下，您正聚焦 <b style="color:${sd.color || "#58a6ff"}">${ST.escapeHtml(sd.name)}</b> 在产业链中的位置。
+            上下游节点和供给关系一目了然，并随时间轴变化更新跟踪内容。
           </div>
         </div>
 
+        <!-- V10 · 4 列个股抽屉 + 时间轴 -->
         <div class="chain-stage" style="margin-top:18px;">
           <div class="chain-header">
-            <h3>· 细分领域下个股</h3>
-            <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">+ 添加个股</button>
+            <h3>· 个股 · ${drawerCount > 0 ? drawerCount + " 个，按最新优先排序" : "暂无"}</h3>
+            <div class="muted" style="font-size:12px;">点击抽屉右侧 › 进入个股查看详情</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            ${(sd.stocks || []).map(st => {
-              const op = ST.latestOperationBefore(st, active);
-              const snap = ST.latestSnapshotBefore(st, active);
-              const opMeta = op ? ST.opTypeMeta(op.type) : null;
-              return `
-                <div class="stock-row" style="grid-template-columns: 1.4fr 1.6fr 1fr 1fr auto;">
-                  <div class="stock-name" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">
-                    ${ST.escapeHtml(st.name)}
-                    <span class="ticker">${ST.escapeHtml(st.ticker)} · ${ST.escapeHtml(st.market)}</span>
-                  </div>
-                  <div class="concept-cell" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">${ST.escapeHtml(st.concept || "—")}</div>
-                  <div class="snapshot-cell">
-                    <span class="lbl">价格 / PE</span>
-                    <span class="val">${snap && snap.price != null ? ST.fmtNum(snap.price) : "—"} · ${snap && snap.valuation && snap.valuation.pe != null ? ST.fmtNum(snap.valuation.pe) : "—"}</span>
-                  </div>
-                  <div class="snapshot-cell">
-                    <span class="lbl">市值</span>
-                    <span class="val">${snap ? ST.escapeHtml(snap.marketCap || "—") : "—"}</span>
-                  </div>
-                  <div class="row" style="justify-content:flex-end;">
-                    ${opMeta ? `<span class="op-badge" data-act="open-operation" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" data-operation-id="${op.id}" style="color:${opMeta.color};border-color:${opMeta.color}50;background:${opMeta.color}18;">${opMeta.icon} ${opMeta.label}</span>` :
-                               `<span class="op-badge" data-act="open-operation" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" data-operation-id="" style="color:#7d8590;border-color:#7d859050;background:transparent;">+ 操作</span>`}
-                  </div>
+          ${drawerCount > 0 ? `
+          <div class="track-drawers-wrap" style="margin-top:8px;">
+            <button class="track-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" ${drawerCount <= 4 ? "disabled" : ""}>‹</button>
+            <div class="op-drawers-grid" data-subdivision-op-drawers="${subKey}">${stockDrawerHtml}</div>
+            <button class="track-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" ${drawerCount <= 4 ? "disabled" : ""}>›</button>
+          </div>
+          <div class="track-rail-wrap">
+            <button class="track-rail-nav prev" data-act="sd-rail-prev" data-subdivision-op-rail="${subKey}" disabled>‹</button>
+            <div class="track-rail-track" data-subdivision-op-rail="${subKey}">
+              <div class="track-rail-axis"></div>
+              <div class="track-rail-axis-progress"></div>
+            </div>
+            <button class="track-rail-nav next" data-act="sd-rail-next" data-subdivision-op-rail="${subKey}" disabled>›</button>
+            <button class="track-rail-add" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="新增个股">+</button>
+          </div>
+          ` : `<div class="empty-state" style="padding:30px 10px;">
+              <div class="emoji" style="font-size:32px;">·</div>
+              <div>该细分领域还没有个股</div>
+              <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" style="margin-top:8px;">+ 新增个股</button>
+            </div>`}
+        </div>
+
+        <!-- 跟踪面板 -->
+        <div class="chain-stage" style="margin-top:18px;">
+          <div class="chain-header">
+            <h3>· 产业跟踪内容 · ${entries.length} 条</h3>
+          </div>
+          <div class="tracking-list" id="trackingList">
+            ${entries.length ? entries.slice(0, 6).map(e => `
+              <div class="tracking-item" style="border-left-color:${sd.color || "#58a6ff"}">
+                <div class="date">
+                  <span>${ST.fmtDate(e.date)}</span>
+                  <span class="del" data-act="del-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="删除">x</span>
                 </div>
-              `;
-            }).join("") || `<div class="muted" style="padding:14px;text-align:center;">暂无个股</div>`}
+                <div class="content">${ST.escapeHtml(e.content).replace(/\n/g, "<br>")}</div>
+              </div>
+            `).join("") : `<div class="muted" style="font-size:12px;padding:16px;text-align:center;">暂无跟踪内容，使用下方表单手动录入</div>`}
+          </div>
+          <div class="divider"></div>
+          <div class="form-row">
+            <label>日期</label>
+            <input class="input" id="trackDate" type="date" value="${active}" />
+          </div>
+          <div class="form-row">
+            <label>跟踪内容</label>
+            <textarea class="textarea" id="trackContent" placeholder="例如：英伟达发布 B300，性能 +50%，功耗 +30%"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" data-act="add-tracking" data-subdivision-id="${sd.id}">+ 录入跟踪</button>
           </div>
         </div>
       </div>
@@ -2213,17 +2325,26 @@ App.projectOverallStats = function (p) {
         return;
       }
       case "op-rail-prev":
-      case "op-rail-next": {
-        const rail = el.closest("[data-stock-op-rail]");
+      case "op-rail-next":
+      case "sub-rail-prev":
+      case "sub-rail-next":
+      case "sd-rail-prev":
+      case "sd-rail-next": {
+        let type = "stock";
+        if (act === "sub-rail-prev" || act === "sub-rail-next") type = "sector";
+        else if (act === "sd-rail-prev" || act === "sd-rail-next") type = "subdivision";
+        const railSel = '[data-' + type + '-op-rail]';
+        const rail = el.closest(railSel);
         if (!rail) return;
-        const stockId = rail.dataset.stockOpRail;
-        const key = "stock_" + stockId;
+        const id = rail.getAttribute('data-' + type + '-op-rail');
+        const key = type + "_" + id;
         let state = App.opDrawerState[key];
         if (!state) { state = { pageStart: 0, activeIdx: 0 }; App.opDrawerState[key] = state; }
-        const drawer = document.querySelector('[data-stock-op-drawers]');
+        const drawer = document.querySelector('[data-' + type + '-op-drawers]');
         if (!drawer) return;
         const total = drawer.querySelectorAll(".op-drawer").length;
-        if (act === "op-rail-prev") {
+        const isPrev = act === "op-rail-prev" || act === "sub-rail-prev" || act === "sd-rail-prev";
+        if (isPrev) {
           state.pageStart = Math.max(0, state.pageStart - 4);
           state.activeIdx = Math.min(state.pageStart, Math.max(0, total - 1));
         } else {
@@ -2394,14 +2515,21 @@ App.projectOverallStats = function (p) {
       if (typeof this.handleOpDrawerFieldChange === "function") this.handleOpDrawerFieldChange(e);
     });
 
-    // V10 · renderView 后自动渲染时间轴
+    // V10 · renderView 后自动渲染时间轴（支持 stock / sector / subdivision）
     const origRenderView = this.renderView.bind(this);
     this.renderView = function () {
       origRenderView();
-      const drawer = document.querySelector('[data-stock-op-drawers]');
-      if (drawer && typeof App.renderOpRail === 'function') {
-        const stockId = drawer.getAttribute('data-stock-op-drawers');
-        App.renderOpRail(stockId);
+      const stockDrawer = document.querySelector('[data-stock-op-drawers]');
+      if (stockDrawer && typeof App.renderOpRail === 'function') {
+        App.renderOpRail(stockDrawer.getAttribute('data-stock-op-drawers'), 'stock');
+      }
+      const sectorDrawer = document.querySelector('[data-sector-op-drawers]');
+      if (sectorDrawer && typeof App.renderOpRail === 'function') {
+        App.renderOpRail(sectorDrawer.getAttribute('data-sector-op-drawers'), 'sector');
+      }
+      const subDrawer = document.querySelector('[data-subdivision-op-drawers]');
+      if (subDrawer && typeof App.renderOpRail === 'function') {
+        App.renderOpRail(subDrawer.getAttribute('data-subdivision-op-drawers'), 'subdivision');
       }
     };
 
@@ -2421,21 +2549,27 @@ App.projectOverallStats = function (p) {
   // ============================================================
   App.opDrawerState = {};
 
-  App.renderOpRail = function (stockId) {
-    const key = "stock_" + stockId;
+  App.renderOpRail = function (id, type) {
+    type = type || "stock";
+    const key = type + "_" + id;
     let state = App.opDrawerState[key];
     if (!state) {
       state = { pageStart: 0, activeIdx: 0 };
       App.opDrawerState[key] = state;
     }
-    const rail = document.querySelector('[data-stock-op-rail="' + stockId + '"]');
+    const railSel = '[data-' + type + '-op-rail="' + id + '"]';
+    const drawerSel = '[data-' + type + '-op-drawers]';
+    const rail = document.querySelector(railSel);
     if (!rail) return;
-    const track = rail.querySelector("[data-op-rail-track]");
+    const track = rail.classList.contains("track-rail-track") ? rail : rail.querySelector(".track-rail-track");
     if (!track) return;
+    // 清空已有节点（保留 axis + progress）
     Array.from(track.children).forEach(function (c) {
-      if (!c.classList.contains("op-rail-axis") && !c.classList.contains("op-rail-progress")) track.removeChild(c);
+      const cls = c.className || "";
+      if (cls.indexOf("track-rail-axis") === -1 && cls.indexOf("op-rail-node") === -1) track.removeChild(c);
     });
-    const drawer = document.querySelector('[data-stock-op-drawers]');
+    Array.from(track.querySelectorAll(".op-rail-node")).forEach(function (n) { n.parentNode.removeChild(n); });
+    const drawer = document.querySelector(drawerSel);
     if (!drawer) return;
     const cards = drawer.querySelectorAll(".op-drawer");
     const total = cards.length;
@@ -2449,8 +2583,10 @@ App.projectOverallStats = function (p) {
       const node = document.createElement("div");
       node.className = "op-rail-node" + (i === state.activeIdx ? " is-active" : "");
       node.dataset.idx = i;
-      node.innerHTML = '<div class="op-rail-dot"></div><div class="op-rail-label">' + ST.escapeHtml(dateLabel.slice(5)) + "</div>";
-      (function (idx) {
+      // 板块/细分的 label 不需要 .slice(5)，stock 的日期格式 "YYYY-MM-DD" 才要切掉年份
+      const label = type === "stock" ? dateLabel.slice(5) : dateLabel.slice(0, 12);
+      node.innerHTML = '<div class="op-rail-dot"></div><div class="op-rail-label">' + ST.escapeHtml(label) + "</div>";
+      (function (idx, currentType, currentId) {
         node.addEventListener("click", function () {
           state.activeIdx = idx;
           const page = Math.floor(idx / 4) * 4;
@@ -2458,24 +2594,30 @@ App.projectOverallStats = function (p) {
           drawer.querySelectorAll(".op-drawer").forEach(function (dc, di) {
             dc.classList.toggle("is-active", di === idx);
           });
-          App.renderOpRail(stockId);
+          App.renderOpRail(currentId, currentType);
         });
-      })(i);
+      })(i, type, id);
       track.appendChild(node);
     }
-    const progress = rail.querySelector("[data-op-rail-progress]");
+    const progress = rail.querySelector(".track-rail-axis-progress") || rail.querySelector("[data-op-rail-progress]");
     const pageCount = end - start;
-    if (pageCount > 1) {
-      const localIdx = state.activeIdx - start;
-      const pct = (localIdx / (pageCount - 1)) * 100;
-      progress.style.width = pct + "%";
-    } else {
-      progress.style.width = "0";
+    if (progress) {
+      if (pageCount > 1) {
+        const localIdx = state.activeIdx - start;
+        const pct = (localIdx / (pageCount - 1)) * 100;
+        progress.style.width = pct + "%";
+      } else {
+        progress.style.width = "0";
+      }
     }
-    const prevBtn = rail.querySelector('[data-act="op-rail-prev"]');
-    const nextBtn = rail.querySelector('[data-act="op-rail-next"]');
-    if (prevBtn) prevBtn.disabled = state.pageStart === 0;
-    if (nextBtn) nextBtn.disabled = state.pageStart + 4 >= total;
+    // 更新 wrap 内所有 prev/next 按钮的 disabled
+    const wrap = rail.closest(".track-rail-wrap, .op-rail-wrap");
+    if (wrap) {
+      wrap.querySelectorAll('[data-act$="-rail-prev"]').forEach(function (b) { b.disabled = state.pageStart === 0; });
+      wrap.querySelectorAll('[data-act$="-rail-next"]').forEach(function (b) { b.disabled = state.pageStart + 4 >= total; });
+      wrap.querySelectorAll('[data-act$="sub-rail-prev"], [data-act$="sd-rail-prev"]').forEach(function (b) { b.disabled = state.pageStart === 0; });
+      wrap.querySelectorAll('[data-act$="sub-rail-next"], [data-act$="sd-rail-next"]').forEach(function (b) { b.disabled = state.pageStart + 4 >= total; });
+    }
   };
 
   App.handleOpDrawerFieldChange = function (e) {
