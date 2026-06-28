@@ -868,119 +868,135 @@ App.projectOverallStats = function (p) {
     const ops  = [...(st.operations || [])].sort((a, b) => b.date.localeCompare(a.date));
     const snaps = ST.sortedSnapshots(st);
     const val = (snap && snap.valuation) || {};
+    const stockKey = sec.id + "|" + sd.id + "|" + st.id;
+
+    // 估值精简（v10 5 字段：现价 + 市值下限 / 上限 / 总股本 + 动态PE + ROE + PEG）
+    const ratingMap = { buy: "💚 买入", add: "➕ 加仓", hold: "🔵 持有", trim: "➖ 减仓", sell: "🔻 卖出", watch: "💛 关注", speculative: "🔶 投机" };
+    const activeOp = ops[0];
 
     return `
-      <div class="detail-page">
+      <div class="detail-page v10-stock">
         <div class="detail-head">
           <h2>
-            <span style="font-size:26px;">·</span>
-            ${ST.escapeHtml(st.name)}
+            <span class="stock-avatar">${ST.escapeHtml((st.name || "?").slice(0, 1))}</span>
+            ${ST.escapeHtml(st.name)} <span class="ticker-tag">${ST.escapeHtml(st.ticker)}</span>
             <button class="btn-tiny" data-act="edit-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">编辑</button>
           </h2>
           <div class="meta">
-            <span class="tag">所属：${ST.escapeHtml(sd.name)} · ${ST.escapeHtml(sec.name)}</span>
-            <span class="tag">市场：${ST.escapeHtml(st.market)}</span>
-            <button class="btn-tiny" data-act="add-snapshot" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">+ 快照 @ ${ST.fmtDate(active)}</button>
-            <button class="btn-tiny" data-act="add-operation" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">+ 操作建议</button>
+            <span class="tag">${ST.escapeHtml(sd.name)} · ${ST.escapeHtml(sec.name)}</span>
+            <span class="tag">${ST.escapeHtml(st.market)}</span>
+            ${activeOp ? `<span class="tag rating-${activeOp.type || 'none'}">${ratingMap[activeOp.type] || "未评级"}</span>` : `<span class="tag rating-none">未评级</span>`}
+            <button class="btn-tiny" data-act="add-snapshot" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">+ 快照</button>
           </div>
         </div>
 
-        <div class="stock-head-card">
+        <div class="stock-head-card v10">
           <div class="top">
-            <div class="avatar">${ST.escapeHtml(st.name.slice(0, 1))}</div>
             <div class="name-block">
-              <div class="name">${ST.escapeHtml(st.name)}</div>
-              <div class="meta-line">
-                <span class="ticker">${ST.escapeHtml(st.ticker)}</span>
-                <span>· ${ST.escapeHtml(st.market)}</span>
-                <span class="live-dot"></span><span style="color:var(--green);">随时间轴联动</span>
+              <div class="current-price">
+                <span class="price-val">${snap && snap.price != null ? ST.fmtNum(snap.price) : "—"}</span>
+                <span class="price-label">当前价格 · ${ST.fmtDate(active)}</span>
               </div>
+            </div>
+            <div class="meta-stats">
+              <span class="stat">市值 ${snap ? ST.escapeHtml(snap.marketCap || "—") : "—"}</span>
+              <span class="stat">快照 ${snaps.length} 个</span>
+              <span class="stat">操作 ${ops.length} 条</span>
             </div>
           </div>
           <div class="concept"><b>核心概念：</b>${ST.escapeHtml(st.concept || "—")}</div>
-          <div class="price-card">
-            <div class="price-cell">
-              <div class="lbl">价格 · ${ST.fmtDate(active)}</div>
-              <div class="val">${snap && snap.price != null ? ST.fmtNum(snap.price) : "—"}</div>
-            </div>
-            <div class="price-cell">
-              <div class="lbl">市值</div>
-              <div class="val">${snap ? ST.escapeHtml(snap.marketCap || "—") : "—"}</div>
-            </div>
-            <div class="price-cell">
-              <div class="lbl">毛利率</div>
-              <div class="val">${snap ? ST.escapeHtml(snap.grossMargin || "—") : "—"}</div>
-            </div>
-            <div class="price-cell">
-              <div class="lbl">快照数量</div>
-              <div class="val">${snaps.length}</div>
-            </div>
+        </div>
+
+        <div class="v10-valuation">
+          <h4>· 估值（精简 4 字段）</h4>
+          <div class="v10-val-grid">
+            <div class="v10-cell"><div class="lbl">现价</div><div class="val">${snap && snap.price != null ? ST.fmtNum(snap.price) : "—"}</div></div>
+            <div class="v10-cell"><div class="lbl">动态 PE</div><div class="val">${val.pe != null ? ST.fmtNum(val.pe) : "—"}</div></div>
+            <div class="v10-cell"><div class="lbl">ROE</div><div class="val">${val.roe != null ? ST.fmtNum(val.roe) + "%" : "—"}</div></div>
+            <div class="v10-cell"><div class="lbl">PEG</div><div class="val">${val.peg != null ? ST.fmtNum(val.peg) : "—"}</div></div>
           </div>
         </div>
 
         <div class="stock-detail-grid">
-          <div>
+          <div class="stock-detail-left">
             <div class="snap-section">
-              <h4>· 估值快照 <span class="date-tag">@ ${ST.fmtDate(active)}</span></h4>
-              <div class="snap-grid">
-                <div class="snap-cell"><div class="lbl">PE</div><div class="val">${val.pe != null ? ST.fmtNum(val.pe) : "—"}</div></div>
-                <div class="snap-cell"><div class="lbl">PEG</div><div class="val">${val.peg != null ? ST.fmtNum(val.peg) : "—"}</div></div>
-                <div class="snap-cell"><div class="lbl">PB</div><div class="val">${val.pb != null ? ST.fmtNum(val.pb) : "—"}</div></div>
-                <div class="snap-cell"><div class="lbl">PS</div><div class="val">${val.ps != null ? ST.fmtNum(val.ps) : "—"}</div></div>
-              </div>
+              <h4>· 主营业务</h4>
+              <div class="snap-cell full"><div class="lbl">产品 / 服务</div><div class="val text">${snap ? ST.escapeHtml(snap.mainBusiness || "—") : "—"}</div></div>
+              <div class="snap-cell full"><div class="lbl">营收 / 催化剂</div><div class="val text">${snap ? ST.escapeHtml(snap.catalysts || "—") : "—"}</div></div>
             </div>
 
             <div class="snap-section">
-              <h4>· 主营业务产品 <span class="date-tag">@ ${ST.fmtDate(active)}</span></h4>
-              <div class="snap-grid">
-                <div class="snap-cell full"><div class="lbl">产品 / 服务</div><div class="val text">${snap ? ST.escapeHtml(snap.mainBusiness || "—") : "—"}</div></div>
-              </div>
-            </div>
-
-            <div class="snap-section">
-              <h4>· 营收与业绩 <span class="date-tag">@ ${ST.fmtDate(active)}</span></h4>
-              <div class="snap-grid">
-                <div class="snap-cell full"><div class="lbl">最新营收</div><div class="val text">${snap ? ST.escapeHtml(snap.revenue || "—") : "—"}</div></div>
-                <div class="snap-cell full"><div class="lbl">驱动 / 催化剂</div><div class="val text">${snap ? ST.escapeHtml(snap.catalysts || "—") : "—"}</div></div>
-              </div>
-            </div>
-
-            <div class="snap-section">
-              <h4>· 历史快照（点击跳转时间轴）</h4>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${snaps.length ? snaps.map(s => `
-                  <button class="btn-tiny" data-act="jump-date" data-date="${s.date}">${ST.fmtDate(s.date)} · $${ST.fmtNum(s.price)} · PE ${s.valuation && s.valuation.pe != null ? ST.fmtNum(s.valuation.pe) : "—"}</button>
-                `).join("") : `<span class="muted" style="font-size:12px;">暂无历史快照</span>`}
+              <h4>· 历史快照</h4>
+              <div class="hist-snaps">
+                ${snaps.length ? snaps.map(s => `<button class="btn-tiny" data-act="jump-date" data-date="${s.date}">${ST.fmtDate(s.date)} · ${ST.fmtNum(s.price)} · PE ${s.valuation && s.valuation.pe != null ? ST.fmtNum(s.valuation.pe) : "—"}</button>`).join("") : `<span class="muted" style="font-size:12px;">暂无历史快照</span>`}
               </div>
             </div>
           </div>
 
-          <div class="operations-side">
-            <h3 style="margin:0;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
-              <span>· 操作建议时间线</span>
-              <button class="btn-tiny" data-act="add-operation" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}">+ 新增</button>
+          <div class="operations-side v10-op-side">
+            <h3 class="v10-op-title">
+              <span>· 操作建议 · 时间轴</span>
+              <span class="hint">4 列抽屉 + 底部节点对齐</span>
             </h3>
-            <div style="overflow-y:auto;max-height:580px;display:flex;flex-direction:column;gap:8px;">
-              ${ops.length ? ops.map(o => {
+            <div class="op-drawers-grid" data-stock-op-drawers="${stockKey}">
+              ${ops.length ? ops.slice(0, 4).map((o, idx) => {
                 const m = ST.opTypeMeta(o.type);
                 return `
-                  <div class="op-card" data-act="open-operation" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" data-operation-id="${o.id}" style="border-left-color:${m.color};">
-                    <div class="head">
-                      <span class="op-badge" style="color:${m.color};border-color:${m.color}50;background:${m.color}18;">${m.icon} ${m.label}</span>
-                      <span class="date">${ST.fmtDate(o.date)}</span>
+                  <div class="op-drawer${idx === 0 ? " is-active" : ""}" data-op-id="${o.id}" data-stock-op-id="${st.id}" data-sector-op-id="${sec.id}" data-subdivision-op-id="${sd.id}">
+                    <div class="op-drawer-head">
+                      <div class="op-drawer-date">${ST.fmtDate(o.date)}</div>
+                      <input class="op-drawer-label" data-field="op-label" data-op-id="${o.id}" value="${ST.escapeHtml(o.label || m.label)}" placeholder="评估标签…" />
                     </div>
-                    <div class="body">
-                      <div class="suggestion">${ST.escapeHtml(o.suggestion || "—")}</div>
-                      <div class="kv">
-                        <div>价格<b>${o.price != null ? ST.fmtNum(o.price) : "—"}</b></div>
-                        <div>目标<b>${o.target != null ? ST.fmtNum(o.target) : "—"}</b></div>
-                        <div>止损<b>${o.stopLoss != null ? ST.fmtNum(o.stopLoss) : "—"}</b></div>
-                        <div>仓位<b>${ST.escapeHtml(o.position || "—")}</b></div>
+                    <div class="op-drawer-body">
+                      <div class="op-block">
+                        <div class="op-block-title"><span class="op-block-icon">📋</span> 操作建议</div>
+                        <div class="op-fields-row">
+                          <div class="op-field"><label>评级</label>
+                            <select data-field="op-type" data-op-id="${o.id}">
+                              ${["buy","add","hold","trim","sell","watch","speculative"].map(function(t) {
+                                const mm = ST.opTypeMeta(t);
+                                return `<option value="${t}"${o.type === t ? " selected" : ""}>${mm.label}</option>`;
+                              }).join("")}
+                            </select>
+                          </div>
+                          <div class="op-field"><label>目标价</label>
+                            <input type="number" step="0.01" data-field="op-target" data-op-id="${o.id}" value="${o.target != null ? o.target : ""}" placeholder="元" />
+                          </div>
+                          <div class="op-field"><label>止损价</label>
+                            <input type="number" step="0.01" data-field="op-stopLoss" data-op-id="${o.id}" value="${o.stopLoss != null ? o.stopLoss : ""}" placeholder="元" />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="op-block">
+                        <div class="op-block-title"><span class="op-block-icon">🧠</span> 投资逻辑</div>
+                        <textarea class="op-textarea" data-field="op-suggestion" data-op-id="${o.id}" placeholder="为什么买/不买？核心驱动 + 估值逻辑…">${ST.escapeHtml(o.suggestion || "")}</textarea>
+                      </div>
+                      <div class="op-block">
+                        <div class="op-block-title"><span class="op-block-icon">⚠️</span> 风险点</div>
+                        <textarea class="op-textarea" data-field="op-risks" data-op-id="${o.id}" placeholder="可能的下行风险…">${ST.escapeHtml(o.risks || "")}</textarea>
+                      </div>
+                      <div class="op-block">
+                        <div class="op-block-title"><span class="op-block-icon">🎯</span> 风向标</div>
+                        <textarea class="op-textarea" data-field="op-signals" data-op-id="${o.id}" placeholder="什么信号需要重新评估…">${ST.escapeHtml(o.signals || "")}</textarea>
                       </div>
                     </div>
+                    <div class="op-drawer-nav">
+                      <button data-act="op-move-up" data-op-id="${o.id}" ${idx === 0 ? "disabled" : ""}>▲</button>
+                      <button data-act="op-move-down" data-op-id="${o.id}" ${idx === ops.length - 1 ? "disabled" : ""}>▼</button>
+                    </div>
+                    <button class="op-drawer-del" data-act="del-op-drawer" data-op-id="${o.id}" title="删除节点">✕</button>
                   </div>
                 `;
-              }).join("") : `<div class="muted" style="font-size:12px;padding:14px;text-align:center;">暂无操作建议，点击右上新增</div>`}
+              }).join("") : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">暂无操作建议，点击下方 ＋ 添加</div>`}
+            </div>
+            <div class="op-rail-wrap" data-stock-op-rail="${stockKey}">
+              <button class="op-rail-nav prev" data-act="op-rail-prev" title="上一页节点">‹</button>
+              <div class="op-rail-track" data-op-rail-track>
+                <div class="op-rail-axis"></div>
+                <div class="op-rail-progress" data-op-rail-progress></div>
+              </div>
+              <button class="op-rail-nav next" data-act="op-rail-next" title="下一页节点">›</button>
+              <button class="op-rail-add" data-act="add-op-drawer" title="添加评估节点（手动选日期）">＋</button>
             </div>
           </div>
         </div>
@@ -2171,6 +2187,54 @@ App.projectOverallStats = function (p) {
       case "del-operation":
         this.deleteOperation(el.dataset.stockId, el.dataset.operationId); return;
 
+      // V10 · 操作建议抽屉 + 时间轴
+      case "op-move-up":
+      case "op-move-down":
+        this.handleOpDrawerMove(act, el); return;
+      case "del-op-drawer":
+        this.handleOpDrawerDel(act, el); return;
+      case "add-op-drawer": {
+        const today = new Date().toISOString().slice(0, 10);
+        const inputDate = prompt("请输入评估日期（YYYY-MM-DD）：", today);
+        if (inputDate === null) return;
+        const date = inputDate.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          alert("日期格式错误，请用 YYYY-MM-DD（例如 2026-01-15）");
+          return;
+        }
+        const sid = el.dataset.stockId;
+        let stFound = null;
+        for (const sec of p.sectors) for (const sd of sec.subdivisions) {
+          const x = ST.findStock(sd, sid); if (x) { stFound = x; break; }
+        }
+        if (!stFound) return;
+        const f = this.formOperation(stFound, null, date);
+        this.openDrawer(f.title, f.body, f.actions);
+        return;
+      }
+      case "op-rail-prev":
+      case "op-rail-next": {
+        const rail = el.closest("[data-stock-op-rail]");
+        if (!rail) return;
+        const stockId = rail.dataset.stockOpRail;
+        const key = "stock_" + stockId;
+        let state = App.opDrawerState[key];
+        if (!state) { state = { pageStart: 0, activeIdx: 0 }; App.opDrawerState[key] = state; }
+        const drawer = document.querySelector('[data-stock-op-drawers]');
+        if (!drawer) return;
+        const total = drawer.querySelectorAll(".op-drawer").length;
+        if (act === "op-rail-prev") {
+          state.pageStart = Math.max(0, state.pageStart - 4);
+          state.activeIdx = Math.min(state.pageStart, Math.max(0, total - 1));
+        } else {
+          if (state.pageStart + 4 >= total) return;
+          state.pageStart += 4;
+          state.activeIdx = state.pageStart;
+        }
+        this.renderView();
+        return;
+      }
+
       // 跟踪
       case "add-tracking":
         this.saveTrackingFromForm(el.dataset.subdivisionId); return;
@@ -2316,6 +2380,31 @@ App.projectOverallStats = function (p) {
 
     document.body.addEventListener("click", e => this.handleGlobalClick(e));
 
+    // V10 · 抽屉内字段实时保存
+    document.body.addEventListener("input", e => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.field) return;
+      if (el.dataset.field.indexOf("op-") !== 0) return;
+      if (typeof this.handleOpDrawerFieldChange === "function") this.handleOpDrawerFieldChange(e);
+    });
+    document.body.addEventListener("change", e => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.field) return;
+      if (el.dataset.field.indexOf("op-") !== 0) return;
+      if (typeof this.handleOpDrawerFieldChange === "function") this.handleOpDrawerFieldChange(e);
+    });
+
+    // V10 · renderView 后自动渲染时间轴
+    const origRenderView = this.renderView.bind(this);
+    this.renderView = function () {
+      origRenderView();
+      const drawer = document.querySelector('[data-stock-op-drawers]');
+      if (drawer && typeof App.renderOpRail === 'function') {
+        const stockId = drawer.getAttribute('data-stock-op-drawers');
+        App.renderOpRail(stockId);
+      }
+    };
+
     this.renderHeader();
     this.renderTimeline();
     this.renderView();
@@ -2326,5 +2415,143 @@ App.projectOverallStats = function (p) {
 
   document.addEventListener("DOMContentLoaded", () => App.init());
   window.App = App;
+
+  // ============================================================
+  // V10 · 操作建议抽屉 + 时间轴 helpers
+  // ============================================================
+  App.opDrawerState = {};
+
+  App.renderOpRail = function (stockId) {
+    const key = "stock_" + stockId;
+    let state = App.opDrawerState[key];
+    if (!state) {
+      state = { pageStart: 0, activeIdx: 0 };
+      App.opDrawerState[key] = state;
+    }
+    const rail = document.querySelector('[data-stock-op-rail="' + stockId + '"]');
+    if (!rail) return;
+    const track = rail.querySelector("[data-op-rail-track]");
+    if (!track) return;
+    Array.from(track.children).forEach(function (c) {
+      if (!c.classList.contains("op-rail-axis") && !c.classList.contains("op-rail-progress")) track.removeChild(c);
+    });
+    const drawer = document.querySelector('[data-stock-op-drawers]');
+    if (!drawer) return;
+    const cards = drawer.querySelectorAll(".op-drawer");
+    const total = cards.length;
+    const start = state.pageStart;
+    const end = Math.min(start + 4, total);
+    for (let i = start; i < end; i++) {
+      const c = cards[i];
+      const localIdx = i - start;
+      const dateEl = c.querySelector(".op-drawer-date");
+      const dateLabel = dateEl ? dateEl.textContent : "";
+      const node = document.createElement("div");
+      node.className = "op-rail-node" + (i === state.activeIdx ? " is-active" : "");
+      node.dataset.idx = i;
+      node.innerHTML = '<div class="op-rail-dot"></div><div class="op-rail-label">' + ST.escapeHtml(dateLabel.slice(5)) + "</div>";
+      (function (idx) {
+        node.addEventListener("click", function () {
+          state.activeIdx = idx;
+          const page = Math.floor(idx / 4) * 4;
+          state.pageStart = page;
+          drawer.querySelectorAll(".op-drawer").forEach(function (dc, di) {
+            dc.classList.toggle("is-active", di === idx);
+          });
+          App.renderOpRail(stockId);
+        });
+      })(i);
+      track.appendChild(node);
+    }
+    const progress = rail.querySelector("[data-op-rail-progress]");
+    const pageCount = end - start;
+    if (pageCount > 1) {
+      const localIdx = state.activeIdx - start;
+      const pct = (localIdx / (pageCount - 1)) * 100;
+      progress.style.width = pct + "%";
+    } else {
+      progress.style.width = "0";
+    }
+    const prevBtn = rail.querySelector('[data-act="op-rail-prev"]');
+    const nextBtn = rail.querySelector('[data-act="op-rail-next"]');
+    if (prevBtn) prevBtn.disabled = state.pageStart === 0;
+    if (nextBtn) nextBtn.disabled = state.pageStart + 4 >= total;
+  };
+
+  App.handleOpDrawerFieldChange = function (e) {
+    const el = e.target;
+    const field = el.dataset.field;
+    if (!field) return;
+    const opId = el.dataset.opId;
+    if (!opId) return;
+    const card = el.closest(".op-drawer");
+    if (!card) return;
+    const sectorId = card.dataset.sectorOpId;
+    const subdivisionId = card.dataset.subdivisionOpId;
+    const stockId = card.dataset.stockOpId;
+    const p = ST.findProject(this.state.data, this.state.data.activeProjectId);
+    const sec = p && ST.findSector(p, sectorId);
+    const sd = sec && ST.findSubdivision(sec, subdivisionId);
+    const st = sd && ST.findStock(sd, stockId);
+    if (!st) return;
+    const op = (st.operations || []).find(function (x) { return x.id === opId; });
+    if (!op) return;
+    let v = el.value;
+    if (field === "op-target" || field === "op-stopLoss") v = v ? parseFloat(v) : null;
+    // 字段映射到现有 schema
+    if (field === "op-type") op.type = v;
+    else if (field === "op-target") op.target = v;
+    else if (field === "op-stopLoss") op.stopLoss = v;
+    else if (field === "op-suggestion") op.suggestion = v;
+    else if (field === "op-risks") op.risks = v;
+    else if (field === "op-signals") op.signals = v;
+    else if (field === "op-label") op.label = v;
+    if (typeof App.save === "function") App.save();
+  };
+
+  App.handleOpDrawerMove = function (act, btn) {
+    const card = btn.closest(".op-drawer");
+    if (!card) return;
+    const opId = card.dataset.opId;
+    const stockId = card.dataset.stockOpId;
+    const sectorId = card.dataset.sectorOpId;
+    const subdivisionId = card.dataset.subdivisionOpId;
+    const p = ST.findProject(this.state.data, this.state.data.activeProjectId);
+    const sec = p && ST.findSector(p, sectorId);
+    const sd = sec && ST.findSubdivision(sec, subdivisionId);
+    const st = sd && ST.findStock(sd, stockId);
+    if (!st || !st.operations) return;
+    const idx = st.operations.findIndex(function (o) { return o.id === opId; });
+    const dir = (act === "op-move-up") ? -1 : 1;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= st.operations.length) return;
+    const tmp = st.operations[idx];
+    st.operations[idx] = st.operations[newIdx];
+    st.operations[newIdx] = tmp;
+    if (typeof App.save === "function") App.save();
+    const view = App.state && App.state.view;
+    if (view) App.renderView();
+  };
+
+  App.handleOpDrawerDel = function (act, btn) {
+    const card = btn.closest(".op-drawer");
+    if (!card) return;
+    const opId = card.dataset.opId;
+    const stockId = card.dataset.stockOpId;
+    const sectorId = card.dataset.sectorOpId;
+    const subdivisionId = card.dataset.subdivisionOpId;
+    const p = ST.findProject(this.state.data, this.state.data.activeProjectId);
+    const sec = p && ST.findSector(p, sectorId);
+    const sd = sec && ST.findSubdivision(sec, subdivisionId);
+    const st = sd && ST.findStock(sd, stockId);
+    if (!st || !st.operations) return;
+    const op = st.operations.find(function (x) { return x.id === opId; });
+    if (!op) return;
+    if (!confirm("确定删除 " + op.date + " 评估节点？")) return;
+    st.operations = st.operations.filter(function (x) { return x.id !== opId; });
+    if (typeof App.save === "function") App.save();
+    const view = App.state && App.state.view;
+    if (view) App.renderView();
+  };
 })();
 
