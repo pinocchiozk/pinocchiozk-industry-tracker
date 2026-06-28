@@ -404,14 +404,14 @@
     const trackingToday = (sd.trackingEntries||[]).filter(e => e.date === date);
     const stocks = sd.stocks || [];
     const stocksHtml = stocks.map(st => this.homeStockRowHtml(sec, sd, st, date)).join("");
-    // ??????????????????????????????
+    // 个股 chip 紧凑展示（按 prototype-v18 风格）
     const stocksCompactHtml = stocks.length ? stocks.map(st => {
       const snap = (st.snapshots||[]).find(s => s.date === date);
       const op   = (st.operations||[]).find(o => o.date === date);
       const opMeta = op ? ST.opTypeMeta(op.type) : null;
-      const priceStr = snap && snap.price != null ? '$' + ST.fmtNum(snap.price) : '?';
+      const priceStr = snap && snap.price != null ? '$' + ST.fmtNum(snap.price) : '—';
       const peStr = snap && snap.valuation && snap.valuation.pe != null ? 'PE ' + ST.fmtNum(snap.valuation.pe) : '';
-      return `<div class="h-stock-compact" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" title="???? ${ST.escapeHtml(st.name)} ??">
+      return `<div class="h-stock-compact" data-act="open-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" data-stock-id="${st.id}" title="点击进入 ${ST.escapeHtml(st.name)} 个股详情">
         <span class="hsc-name">${ST.escapeHtml(st.name)}</span>
         <span class="hsc-ticker">${ST.escapeHtml(st.ticker)}</span>
         <span class="hsc-price">${priceStr}</span>
@@ -422,21 +422,21 @@
     return `
       <div class="h-subdiv ${isOpen ? 'is-open' : ''}">
         <div class="h-subdiv-head" data-act="toggle-subdiv" data-key="${key}">
-          <span class="arrow">${isOpen ? '?' : '?'}</span>
-          <span class="icon">${sd.icon || '?'}</span>
+          <span class="arrow">${isOpen ? '▼' : '▶'}</span>
+          <span class="icon">${sd.icon || '·'}</span>
           <span class="name" data-act="open-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}">${ST.escapeHtml(sd.name)}</span>
-          ${trackingToday.length ? `<span class="stat-chip blue">??${trackingToday.length}</span>` : ''}
-          ${stocks.length ? `<span class="stat-chip purple">??${stocks.length}</span>` : ''}
-          <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="????">?</button>
-          <button class="btn-tiny" data-act="edit-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="????">?</button>
+          ${trackingToday.length ? `<span class="stat-chip blue">📝${trackingToday.length}</span>` : ''}
+          ${stocks.length ? `<span class="stat-chip purple">📊${stocks.length}</span>` : ''}
+          <button class="btn-tiny" data-act="add-stock" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="新增个股">+</button>
+          <button class="btn-tiny" data-act="edit-subdivision" data-sector-id="${sec.id}" data-subdivision-id="${sd.id}" title="编辑细分">✎</button>
         </div>
-        ${stocksCompactHtml ? `<div class="h-stock-compact-list">${stocksCompactHtml}</div>` : `<div class="muted h-subdiv-empty">?????????????? ??</div>`}
+        ${stocksCompactHtml ? `<div class="h-stock-compact-list">${stocksCompactHtml}</div>` : `<div class="muted h-subdiv-empty">该细分暂无个股</div>`}
         ${isOpen ? `
           <div class="h-subdiv-body">
             <div class="h-track-form">
-              <input class="input h-track-input" data-subdivision-id="${sd.id}" data-date="${date}" placeholder="?? ? ${ST.fmtDate(date)} ???????????" onkeydown="App.quickAddTracking(event, '${sd.id}', '${date}')" />
+              <input class="input h-track-input" data-subdivision-id="${sd.id}" data-date="${date}" placeholder="📝 在 ${ST.fmtDate(date)} 录入细分领域跟踪，回车保存" onkeydown="App.quickAddTracking(event, '${sd.id}', '${date}')" />
             </div>
-            ${trackingToday.length ? `<div class="h-track-list">${trackingToday.map(e => `<div class="h-track-item"><span class="content">${ST.escapeHtml(e.content)}</span><button class="btn-tiny" data-act="edit-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="?????">?</button><button class="btn-del" data-act="del-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="???????">?</button></div>`).join('')}</div>` : ''}
+            ${trackingToday.length ? `<div class="h-track-list">${trackingToday.map(e => `<div class="h-track-item"><span class="content">${ST.escapeHtml(e.content)}</span><button class="btn-tiny" data-act="edit-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="编辑">✎</button><button class="btn-del" data-act="del-tracking" data-subdivision-id="${sd.id}" data-entry-id="${e.id}" title="删除">✕</button></div>`).join('')}</div>` : ''}
             ${stocksHtml ? `<div class="h-stock-list">${stocksHtml}</div>` : ''}
           </div>
         ` : ''}
